@@ -390,11 +390,11 @@ class MessageHandler:
 
             for position in positions:
                 position_id = position["position_id"]
-                
-                # Check if position exists and is open
-                open_position = mt.get_position_or_order(ticket_id=position_id)
+
+                # Check if position exists and is open (only check positions, not orders)
+                open_position = mt.get_position(ticket_id=position_id)
                 if open_position is not None:
-                    # Position exists and is open
+                    # Position exists and is open (active trade)
                     open_positions_count += 1
                     all_positions_closed_or_failed = False
                     logger.info(f"Position {position_id} is still open")

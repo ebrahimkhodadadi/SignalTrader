@@ -42,6 +42,10 @@ class MarketData:
             orders = mt5.orders_get()
             return list(orders) if orders else []
 
+    def get_position(self, ticket_id):
+        """Get open position by ticket ID (only positions, not orders)"""
+        return self.get_open_positions(ticket_id=ticket_id)
+
     def get_position_or_order(self, ticket_id):
         """Get position or order by ticket ID"""
         position = self.get_open_positions(ticket_id=ticket_id)

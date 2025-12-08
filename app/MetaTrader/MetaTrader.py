@@ -62,6 +62,10 @@ class MetaTrader:
     def get_pending_orders(self, ticket_id=None):
         return self.market_data.get_pending_orders(ticket_id)
 
+    def get_position(self, ticket_id):
+        """Get open position by ticket ID (only positions, not orders)"""
+        return self.market_data.get_position(ticket_id)
+
     def get_position_or_order(self, ticket_id):
         return self.market_data.get_position_or_order(ticket_id)
 
