@@ -25,7 +25,7 @@ from loguru import logger
 from telethon import TelegramClient, events
 from telethon.errors import RPCError, AuthKeyError
 from telethon.errors.rpcerrorlist import FloodWaitError, NetworkMigrateError, ServerError
-from MessageHandler import Handle, HandleParentEdit, HandleParentDelete, HandleParentRiskFree, HandleEdite, HandleDelete, MessageType
+from MessageHandler import Handle, HandleParentEdit, HandleParentDelete, HandleParentRiskFree, HandleParentTP, HandleEdite, HandleDelete, MessageType
 import Configure
 
 
@@ -192,6 +192,7 @@ class TelegramClientManager:
             HandleParentEdit(parent_chat_id, parent_msg_id, message_text)
             HandleParentDelete(parent_chat_id, parent_msg_id, message_text)
             HandleParentRiskFree(parent_chat_id, parent_msg_id, message_text)
+            HandleParentTP(parent_chat_id, parent_msg_id, message_text)
 
         except Exception as e:
             logger.error(f"Error handling reply message: {e}")

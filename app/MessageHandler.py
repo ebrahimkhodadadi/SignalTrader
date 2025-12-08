@@ -37,6 +37,7 @@ class MessageHandler:
     EDIT_KEYWORDS = ['edit', 'edite', 'update', 'modify']
     DELETE_KEYWORDS = ['حذف', 'delete', 'close', 'not a signal', 'vip']
     RISK_FREE_KEYWORDS = ['فری', 'risk free', 'risk-free']
+    TP_KEYWORDS = ['tp', 'هدف']
 
     @staticmethod
     def handle_message(message_type: MessageType, text: str, comment: str,
@@ -282,6 +283,98 @@ class MessageHandler:
         except Exception as e:
             logger.error(f"Error handling risk-free command: {e}")
 
+    @staticmethod
+    def handle_parent_tp(chat_id: int, message_id: int, text: str) -> None:
+        """Handle TP commands in reply messages - close all positions if they didn't open in open trades"""
+        try:
+            if not any(keyword in text.lower() for keyword in MessageHandler.TP_KEYWORDS):
+                return
+
+            logger.info(f"Processing TP command for chat {chat_id}, message {message_id}")
+            
+            # Get the signal for this message
+            signal = Migrations.get_signal_by_chat(chat_id, message_id)
+            if signal is None:
+                logger.warning(f"No signal found for chat {chat_id}, message {message_id}")
+                return
+
+            signal_id = signal["id"]
+            logger.info(f"Found signal {signal_id}, checking positions status")
+
+            # Get all positions for this signal
+            positions = Migrations.get_positions_by_signalid(signal_id)
+            if not positions:
+                logger.warning(f"No positions found for signal {signal_id}")
+                return
+
+            logger.info(f"Found {len(positions)} positions for signal {signal_id}")
+
+            # Check if all positions didn't open in open trades
+            from MetaTrader.trading.trading import TradingOperations
+            from Configure.settings.Settings import Settings
+            from MetaTrader.connection import AccountConfig
+
+            # Setup MetaTrader connection to check position status
+            mtAccount = AccountConfig({
+                'server': Settings.mt_server(),
+                'username': Settings.mt_username(),
+                'password': Settings.mt_password(),
+                'path': Settings.mt_path(),
+                'lot': Settings.mt_lot(),
+                'HighRisk': Settings.mt_high_risk(),
+                'SaveProfits': Settings.mt_save_profits(),
+                'AccountSize': Settings.mt_account_size(),
+                'CloserPrice': Settings.mt_closer_price(),
+                'expirePendinOrderInMinutes': Settings.mt_expire_pending_orders_minutes(),
+                'ClosePositionsOnTrail': Settings.mt_close_positions_on_trail(),
+                'disableCache': Settings.disable_cache(),
+                'SymbolMappings': Settings.mt_symbol_mappings()
+            })
+
+            from MetaTrader.MetaTrader import MetaTrader
+            mt = MetaTrader(
+                path=mtAccount.path,
+                server=mtAccount.server,
+                user=mtAccount.username,
+                password=mtAccount.password
+            )
+
+            if not mt.Login():
+                logger.error("Failed to login to MetaTrader for TP command")
+                return
+
+            # Check if all positions are not open trades
+            all_positions_closed_or_failed = True
+            open_positions_count = 0
+
+            for position in positions:
+                position_id = position["position_id"]
+                
+                # Check if position exists and is open
+                open_position = mt.get_position_or_order(ticket_id=position_id)
+                if open_position is not None:
+                    # Position exists and is open
+                    open_positions_count += 1
+                    all_positions_closed_or_failed = False
+                    logger.info(f"Position {position_id} is still open")
+                else:
+                    # Position doesn't exist or is not open (could be failed, cancelled, or closed)
+                    logger.info(f"Position {position_id} is not open")
+
+            # If all positions are not open (meaning they didn't open in open trades), close all of them
+            if all_positions_closed_or_failed:
+                logger.info(f"All {len(positions)} positions for signal {signal_id} are not open trades. Closing all positions...")
+                
+                # Close all positions using the existing delete_signal method
+                TradingOperations.delete_signal(signal_id)
+                
+                logger.success(f"Successfully processed TP command: All positions for signal {signal_id} have been closed and logged")
+            else:
+                logger.warning(f"Cannot process TP command: {open_positions_count} out of {len(positions)} positions are still open for signal {signal_id}")
+
+        except Exception as e:
+            logger.error(f"Error handling TP command: {e}")
+
 
 # Backward compatibility functions
 def Handle(messageType, text, comment, username, message_id, chat_id):
@@ -315,3 +408,7 @@ def HandleParentDelete(chat_id, message_id, text):
 def HandleDelete(chat_id, message_id):
     """Legacy delete handler"""
     MessageHandler.handle_delete(chat_id, message_id)
+
+def HandleParentTP(chat_id, message_id, text):
+    """Legacy TP handler"""
+    MessageHandler.handle_parent_tp(chat_id, message_id, text)
