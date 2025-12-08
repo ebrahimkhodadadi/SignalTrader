@@ -14,19 +14,23 @@ class PriceExtractor:
     ]
 
     _second_price_patterns = [
-        (re.compile(r'\b\d+\.?\d*///(\d+\.?\d*)'), 1),  # pattern///second_price
-        (re.compile(r'@\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),  # @price - second_price
-        (re.compile(r'2(?:nd)?\s+limit\s*@\s*(\d+\.?\d*)', re.IGNORECASE), 1),  # 2nd limit @ price
-        (re.compile(r'\b\d+\.?\d*__+(\d+\.?\d*)'), 1),  # price__+second_price
-        (re.compile(r'@\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),  # @ price - second
-        (re.compile(r'@\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)|:\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)'), [1, 2]),  # Alternative
-        (re.compile(r'\b\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),  # price - second
-        (re.compile(r'\b\d+\b\s*و\s*(\d+)\s*فروش'), 1),  # Persian: number and sell
-        (re.compile(r'\b\d+\b\s*و\s*(\d+)\s*خرید'), 1),  # Persian: number and buy
-        (re.compile(r'\b\d+\.?\d*/(\d+\.?\d*)'), 1),  # price/second
-        (re.compile(r'=\s*(\d+\.?\d*)'), 1),  # = price
-        (re.compile(r'(?:\d+\.\d+)[^\d]+(\d+\.\d+)'), 1),  # price followed by another price
-    ]
+            (re.compile(r'(\d+\.?\d*)[_\uFF3F]+(\d+\.?\d*)'), 2),      # 4220_4224 (underscore or fullwidth underscore)
+            (re.compile(r'(\d+\.?\d*)\s*[:\-]\s*(\d+\.?\d*)'), 2),     # 4220-4224 or 4220:4224
+            (re.compile(r'\b\d+\.?\d*///(\d+\.?\d*)'), 1),
+            (re.compile(r'@\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),
+            (re.compile(r'2(?:nd)?\s+limit\s*@\s*(\d+\.?\d*)', re.IGNORECASE), 1),
+            (re.compile(r'\b\d+\.?\d*__+(\d+\.?\d*)'), 1),
+            (re.compile(r'@\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),
+            (re.compile(r'@\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)|:\s*\d+\.?\d*\s*-\s*(\d+\.?\d*)'), [1, 2]),
+            (re.compile(r'\b\d+\.?\d*\s*-\s*(\d+\.?\d*)'), 1),
+            (re.compile(r'\b\d+\b\s*و\s*(\d+)\s*فروش'), 1),
+            (re.compile(r'\b\d+\b\s*و\s*(\d+)\s*خرید'), 1),
+            (re.compile(r'\b\d+\.?\d*/(\d+\.?\d*)'), 1),
+            (re.compile(r'=\s*(\d+\.?\d*)'), 1),
+            (re.compile(r'(?:\d+\.\d+)[^\d]+(\d+\.\d+)'), 1),
+            # as a last resort: find *two* numbers near each other separated by non-digit (but keep it conservative)
+            (re.compile(r'(\d+\.?\d*)\D{1,3}(\d+\.?\d*)'), 2),
+        ]
 
     _tp_patterns = [
         re.compile(r'tp\s*\d*\s*[@:.\-]?\s*(\d+\.\d+|\d+)', re.IGNORECASE),
