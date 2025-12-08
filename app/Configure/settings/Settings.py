@@ -251,13 +251,9 @@ class SettingsManager:
     def get_instance(cls) -> SafeConfig:
         """Get singleton instance of settings"""
         if cls._instance is None:
-            try:
-                raw_config = cls._load_raw_config()
-                cls._instance = SafeConfig(raw_config)
-                logger.info("Configuration loaded successfully")
-            except Exception as e:
-                logger.warning(f"Failed to load configuration, using defaults: {e}")
-                cls._instance = SafeConfig()  # Use defaults only
+            raw_config = cls._load_raw_config()
+            cls._instance = SafeConfig(raw_config)
+            logger.info("Configuration loaded successfully")
         return cls._instance
 
     @classmethod
@@ -272,8 +268,11 @@ class SettingsManager:
         # Load environment variables
         load_dotenv()
 
-        # Get file loader service
-        file_loader = get_file_loader()
+        # Get file loader service (use override if set for testing)
+        if hasattr(cls, '_file_loader_override'):
+            file_loader = cls._file_loader_override
+        else:
+            file_loader = get_file_loader()
 
         # Determine configuration file name based on environment
         config_filename = cls._get_config_filename()
@@ -282,8 +281,9 @@ class SettingsManager:
         config_data = file_loader.load_json_file(config_filename)
 
         if config_data is None:
-            logger.warning(f"Configuration file '{config_filename}' not found in any search path, using defaults")
-            return {}
+            error_msg = f"Configuration file '{config_filename}' not found in any search path. The application cannot run without a valid settings file. Please create a settings file and try again."
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
 
         # Load and parse configuration
         logger.info(f"Configuration loaded successfully from '{config_filename}'")

@@ -18,10 +18,14 @@ TelegramTrader uses JSON configuration files to allow easy customization of:
 
 The application searches for configuration files in multiple locations in order of preference:
 
-1. `config/` directory (recommended)
-2. `configs/` directory
-3. `settings/` directory
-4. Project root directory
+1. Current working directory (highest priority)
+2. `config/` directory in current working directory
+3. `configs/` directory in current working directory
+4. `settings/` directory in current working directory
+5. `config/` directory in project root (recommended)
+6. `configs/` directory in project root
+7. `settings/` directory in project root
+8. Project root directory
 
 This allows flexibility in organizing configuration files. For example:
 

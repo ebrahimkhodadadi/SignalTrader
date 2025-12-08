@@ -43,8 +43,15 @@ class FileLoaderService:
         module_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(module_dir))
 
+        # Get current working directory
+        current_dir = os.getcwd()
+
         # Possible config directory names and locations
         return [
+            current_dir,                               # Current working directory (highest priority)
+            os.path.join(current_dir, "config"),       # cwd/config/
+            os.path.join(current_dir, "configs"),      # cwd/configs/
+            os.path.join(current_dir, "settings"),     # cwd/settings/
             os.path.join(project_root, "config"),      # project_root/config/
             os.path.join(project_root, "configs"),     # project_root/configs/
             os.path.join(project_root, "settings"),    # project_root/settings/

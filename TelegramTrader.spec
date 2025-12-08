@@ -1,12 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+
+# Collect submodules and data files for MetaTrader and Telegram packages
+metatrader_submodules = collect_submodules('MetaTrader')
+telegram_submodules = collect_submodules('Telegram')
+
+metatrader_data = collect_data_files('MetaTrader')
+telegram_data = collect_data_files('Telegram')
+
+# Combine all submodules and data files
+all_hiddenimports = ['numpy'] + metatrader_submodules + telegram_submodules
+all_datas = metatrader_data + telegram_data
 
 a = Analysis(
     ['app\\runner.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=['numpy'],
+    datas=all_datas,
+    hiddenimports=all_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
