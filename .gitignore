@@ -1,6 +1,5 @@
 *.log
 *.session
-config/
 .venv/
 *.session-journal
 *.db
@@ -10,3 +9,18 @@ build/*
 dist/*
 *.pyc
 *.zip
+
+# Configuration files (keep customizable config files, ignore settings)
+config/development.json
+config/production.json
+config/settings.json
+config/*.json
+!config/keywords.json
+!config/regex_patterns.json
+
+# Keep settings template for releases
+!settings-template.json
+
+# Keep Persian documentation
+!README-fa.md
+!docs/Configuration-fa.md

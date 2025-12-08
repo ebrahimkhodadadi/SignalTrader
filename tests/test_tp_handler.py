@@ -18,28 +18,35 @@ import loguru
 def test_tp_keywords():
     """Test that TP keywords are properly recognized"""
     print("Testing TP keywords recognition...")
-    
-    # Test English keyword
+
+    # Test that the method exists and returns keywords
+    tp_keywords = MessageHandler.get_tp_keywords()
+    assert isinstance(tp_keywords, list), "get_tp_keywords should return a list"
+    assert 'tp' in tp_keywords, "'tp' should be in TP keywords"
+    assert 'هدف' in tp_keywords, "'هدف' should be in TP keywords"
+    print("[OK] TP keywords properly loaded from configuration")
+
+    # Test keyword matching logic
     text1 = "tp"
-    result1 = any(keyword in text1.lower() for keyword in MessageHandler.TP_KEYWORDS)
+    result1 = any(keyword in text1.lower() for keyword in tp_keywords)
     assert result1 == True, "English 'tp' keyword should be recognized"
     print("[OK] English 'tp' keyword recognized")
-    
+
     # Test Persian keyword
     text2 = "هدف"
-    result2 = any(keyword in text2.lower() for keyword in MessageHandler.TP_KEYWORDS)
+    result2 = any(keyword in text2.lower() for keyword in tp_keywords)
     assert result2 == True, "Persian 'هدف' keyword should be recognized"
     print("[OK] Persian keyword recognized")
-    
+
     # Test mixed case
     text3 = "TP"
-    result3 = any(keyword in text3.lower() for keyword in MessageHandler.TP_KEYWORDS)
+    result3 = any(keyword in text3.lower() for keyword in tp_keywords)
     assert result3 == True, "Mixed case 'TP' keyword should be recognized"
     print("[OK] Mixed case 'TP' keyword recognized")
-    
+
     # Test non-matching text
     text4 = "edit signal"
-    result4 = any(keyword in text4.lower() for keyword in MessageHandler.TP_KEYWORDS)
+    result4 = any(keyword in text4.lower() for keyword in tp_keywords)
     assert result4 == False, "Non-TP text should not be recognized"
     print("[OK] Non-TP text correctly rejected")
 
@@ -70,8 +77,10 @@ def test_integration():
     
     # Verify that TP_KEYWORDS are properly defined
     assert hasattr(MessageHandler, 'TP_KEYWORDS'), "TP_KEYWORDS should be defined"
-    assert 'tp' in MessageHandler.TP_KEYWORDS, "'tp' should be in TP_KEYWORDS"
-    assert 'هدف' in MessageHandler.TP_KEYWORDS, "'هدف' should be in TP_KEYWORDS"
+    # Test that the property returns the expected keywords via the method
+    tp_keywords_via_method = MessageHandler.get_tp_keywords()
+    assert 'tp' in tp_keywords_via_method, "'tp' should be in TP keywords"
+    assert 'هدف' in tp_keywords_via_method, "'هدف' should be in TP keywords"
     print("[OK] TP_KEYWORDS properly defined")
 
 if __name__ == "__main__":

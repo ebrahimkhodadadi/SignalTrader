@@ -1,0 +1,37 @@
+{
+  "MetaTrader": {
+    "server": "YOUR_MT5_SERVER_HERE",
+    "username": 12345678,
+    "password": "YOUR_MT5_PASSWORD_HERE",
+    "path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+    "lot": "1%",
+    "HighRisk": false,
+    "SaveProfits": [25, 25, 25, 25],
+    "AccountSize": null,
+    "CloserPrice": 0.0,
+    "expirePendinOrderInMinutes": null,
+    "ClosePositionsOnTrail": true,
+    "SymbolMappings": {},
+    "symbols": {
+      "whiteList": [],
+      "blackList": []
+    }
+  },
+  "Telegram": {
+    "api_id": 12345678,
+    "api_hash": "YOUR_TELEGRAM_API_HASH_HERE",
+    "channels": {
+      "whiteList": ["@your_channel_username"],
+      "blackList": []
+    }
+  },
+  "Notification": {
+    "token": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+    "chatId": 123456789
+  },
+  "Timer": {
+    "start": null,
+    "end": null
+  },
+  "disableCache": false
+}

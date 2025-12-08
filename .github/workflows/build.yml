@@ -51,6 +51,10 @@ jobs:
       with:
         tag_name: v${{ github.run_number }}
         name: Release v${{ github.run_number }}
-        files: ./dist/*.exe
+        files: |
+          ./dist/*.exe
+          ./config/keywords.json
+          ./config/regex_patterns.json
+          ./settings-template.json
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

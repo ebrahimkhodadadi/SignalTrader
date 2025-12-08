@@ -1,0 +1,32 @@
+{
+  "message_commands": {
+    "edit_keywords": [
+      "edit",
+      "edite", 
+      "update",
+      "modify"
+    ],
+    "delete_keywords": [
+      "حذف",
+      "delete",
+      "close",
+      "not a signal",
+      "vip"
+    ],
+    "risk_free_keywords": [
+      "فری",
+      "risk free",
+      "risk-free"
+    ],
+    "tp_keywords": [
+      "tp",
+      "هدف"
+    ]
+  },
+  "description": {
+    "edit_keywords": "Keywords used to detect edit commands in reply messages",
+    "delete_keywords": "Keywords used to detect delete/close commands in reply messages", 
+    "risk_free_keywords": "Keywords used to detect risk-free commands in reply messages",
+    "tp_keywords": "Keywords used to detect take profit commands in reply messages"
+  }
+}

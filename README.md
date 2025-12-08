@@ -2,6 +2,64 @@
 
 TelegramTrader is an automated trading bot that monitors Telegram channels for trading signals, parses them using advanced regex patterns, and executes trades on MetaTrader 5 terminals. It supports risk management, position monitoring, and customizable trading strategies.
 
+## 🌐 Language / زبان
+
+- **[English](README.md)** - English documentation
+- **[فارسی](README-fa.md)** - مستندات فارسی
+
+## 🚀 Quick Start for Beginners
+
+If you're new to TelegramTrader and just want to get started quickly:
+
+### 1. Download the Latest Release
+- Go to [GitHub Releases](https://github.com/ebrahimkhodadadi/TelegramTrader/releases)
+- Download the latest `.exe` file
+- Also download `settings-template.json`, `keywords.json`, and `regex_patterns.json`
+
+### 2. Configure Your Settings
+- Rename `settings-template.json` to `settings.json`
+- Open `settings.json` in any text editor (like Notepad)
+- Fill in your information:
+
+```json
+{
+  "MetaTrader": {
+    "server": "YOUR_MT5_SERVER_HERE",        // Your MetaTrader 5 server
+    "username": 12345678,                    // Your MT5 account number
+    "password": "YOUR_MT5_PASSWORD_HERE",    // Your MT5 password
+    "path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+  },
+  "Telegram": {
+    "api_id": 12345678,                      // Your Telegram API ID
+    "api_hash": "YOUR_TELEGRAM_API_HASH_HERE", // Your Telegram API Hash
+    "channels": {
+      "whiteList": ["@your_channel_username"] // Telegram channels to monitor
+    }
+  },
+  "Notification": {
+    "token": "YOUR_TELEGRAM_BOT_TOKEN_HERE", // Telegram bot for notifications
+    "chatId": 123456789                      // Chat ID for notifications
+  }
+}
+```
+
+### 3. Run the Application
+- Place all files (`.exe`, `settings.json`, `keywords.json`, `regex_patterns.json`) in the same folder
+- Double-click the `.exe` file to start
+- The bot will begin monitoring your specified Telegram channels
+
+### 4. Get Your API Credentials
+- **Telegram API**: Visit https://my.telegram.org/ to get your API ID and Hash
+- **Telegram Bot**: Message @BotFather on Telegram to create a bot and get the token
+- **MetaTrader 5**: Use your existing MT5 account credentials
+
+### Need Help?
+- Check the [Configuration Guide](docs/Config.md) for detailed settings
+- Join our community for support
+- Read the [full documentation](docs/) for advanced features
+
+---
+
 ## Demo
 
 ![Demo](HowTo.gif)
@@ -69,6 +127,9 @@ TelegramTrader is an automated trading bot that monitors Telegram channels for t
 
 ## Configuration
 
+TelegramTrader supports multiple configuration methods for maximum flexibility:
+
+### Main Settings
 Create a `settings.json` file with your trading parameters. See [Configuration Guide](docs/Config.md) for detailed instructions.
 
 Key settings include:
@@ -76,6 +137,20 @@ Key settings include:
 - Telegram API keys and channel filters
 - Risk management parameters (lot sizes, profit targets)
 - Symbol mappings for your broker
+
+### Customizable Keywords & Patterns
+For advanced users, customize command keywords and regex patterns through JSON files. The application searches for these files in multiple locations:
+
+- **`keywords.json`**: Customize message command keywords (edit, delete, risk-free, TP commands)
+- **`regex_patterns.json`**: Customize price extraction regex patterns
+
+**Search locations** (in order of preference):
+1. `config/` directory
+2. `configs/` directory
+3. `settings/` directory
+4. Project root directory
+
+See [Configuration Guide](docs/Configuration.md) for detailed instructions on customizing these files.
 
 ## Usage
 
@@ -97,6 +172,7 @@ Take Profit: 1960.00, 1970.00
 - **Delete/Close**: Close positions
 - **Half**: Close half of a position
 - **Risk Free**: Move stop loss to entry price
+- **TP**: Close all positions if they didn't open in open trades
 
 ### Monitoring
 - Logs are saved daily in the `log/` directory
@@ -161,7 +237,8 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 
 Detailed documentation is available in the `docs/` folder:
 
-- [Configuration Guide](docs/Config.md) - Complete settings reference
+- [Configuration Guide](docs/Config.md) - Main settings reference
+- [Configuration Customization](docs/Configuration.md) - Keywords and regex patterns
 - [Analyzer Documentation](docs/Analayzer.md) - Signal parsing details
 - [MetaTrader Integration](docs/MetaTrader.md) - MT5 API usage
 - [Telegram Integration](docs/Telegram.md) - Telegram API setup

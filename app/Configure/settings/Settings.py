@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, List
 from loguru import logger
 from config import config_from_json
 from dotenv import load_dotenv
+from ..file_loader import get_file_loader
 
 
 class SafeConfig:
@@ -267,37 +268,39 @@ class SettingsManager:
 
     @classmethod
     def _load_raw_config(cls):
-        """Load raw configuration from file"""
+        """Load raw configuration from file using FileLoaderService"""
         # Load environment variables
         load_dotenv()
 
-        # Determine configuration file path
-        config_file = cls._get_config_file_path()
+        # Get file loader service
+        file_loader = get_file_loader()
 
-        if not os.path.exists(config_file):
-            logger.warning(f"Configuration file not found: {config_file}, using defaults")
+        # Determine configuration file name based on environment
+        config_filename = cls._get_config_filename()
+
+        # Try to load the configuration file
+        config_data = file_loader.load_json_file(config_filename)
+
+        if config_data is None:
+            logger.warning(f"Configuration file '{config_filename}' not found in any search path, using defaults")
             return {}
 
         # Load and parse configuration
-        logger.info(f"Loading configuration from: {config_file}")
-        cfg = config_from_json(config_file, read_from_file=True)
-        return cfg
+        logger.info(f"Configuration loaded successfully from '{config_filename}'")
+        return config_data
 
     @classmethod
-    def _get_config_file_path(cls) -> str:
-        """Determine the configuration file path based on environment"""
+    def _get_config_filename(cls) -> str:
+        """Determine the configuration filename based on environment"""
         env = os.getenv("ENV", "").lower()
 
         if env == "development":
-            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-            return os.path.join(root_dir, "config", "development.json")
+            return "development.json"
         elif env == "production":
-            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-            return os.path.join(root_dir, "config", "production.json")
+            return "production.json"
         else:
-            # Default to settings.json in current working directory
-            current_path = os.getcwd()
-            return os.path.join(current_path, "settings.json")
+            # Default to settings.json
+            return "settings.json"
 
     # Static method accessors (these call the instance)
     @classmethod

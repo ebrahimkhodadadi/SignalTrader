@@ -18,6 +18,7 @@ from enum import Enum
 
 from Analayzer import parse_message, extract_price
 from Configure.settings.Settings import Settings
+from Configure.config_loader import get_keywords
 from Database import Migrations
 from Helper import is_now_between
 from MetaTrader import Trade, RiskFreePositions, Update_last_signal, Update_signal, Close_half_signal, Delete_signal
@@ -33,11 +34,36 @@ class MessageType(Enum):
 class MessageHandler:
     """Handles processing of different Telegram message types"""
 
-    # Command keywords for different actions
-    EDIT_KEYWORDS = ['edit', 'edite', 'update', 'modify']
-    DELETE_KEYWORDS = ['حذف', 'delete', 'close', 'not a signal', 'vip']
-    RISK_FREE_KEYWORDS = ['فری', 'risk free', 'risk-free']
-    TP_KEYWORDS = ['tp', 'هدف']
+    # Command keywords loaded from configuration
+    _keywords = get_keywords()
+    
+    @classmethod
+    def get_edit_keywords(cls) -> list:
+        """Get edit command keywords from configuration"""
+        if cls._keywords is None:
+            return []
+        return cls._keywords.get('edit_keywords', [])
+    
+    @classmethod
+    def get_delete_keywords(cls) -> list:
+        """Get delete command keywords from configuration"""
+        if cls._keywords is None:
+            return []
+        return cls._keywords.get('delete_keywords', [])
+    
+    @classmethod
+    def get_risk_free_keywords(cls) -> list:
+        """Get risk-free command keywords from configuration"""
+        if cls._keywords is None:
+            return []
+        return cls._keywords.get('risk_free_keywords', [])
+    
+    @classmethod
+    def get_tp_keywords(cls) -> list:
+        """Get take profit command keywords from configuration"""
+        if cls._keywords is None:
+            return []
+        return cls._keywords.get('tp_keywords', [])
 
     @staticmethod
     def handle_message(message_type: MessageType, text: str, comment: str,
@@ -184,7 +210,10 @@ class MessageHandler:
     def _handle_last_edit(chat_id: int, text: str) -> None:
         """Handle edit commands in message text"""
         try:
-            if any(keyword in text.lower() for keyword in MessageHandler.EDIT_KEYWORDS):
+            edit_keywords = MessageHandler.get_edit_keywords()
+            if not edit_keywords:
+                return
+            if any(keyword in text.lower() for keyword in edit_keywords):
                 stop_loss = extract_price(text)
                 if stop_loss is not None:
                     Update_last_signal(chat_id, stop_loss)
@@ -195,7 +224,10 @@ class MessageHandler:
     def handle_parent_edit(chat_id: int, message_id: int, text: str) -> None:
         """Handle edit commands in reply messages"""
         try:
-            if not any(keyword in text.lower() for keyword in MessageHandler.EDIT_KEYWORDS):
+            edit_keywords = MessageHandler.get_edit_keywords()
+            if not edit_keywords:
+                return
+            if not any(keyword in text.lower() for keyword in edit_keywords):
                 return
 
             stop_loss = extract_price(text)
@@ -242,7 +274,10 @@ class MessageHandler:
     def handle_parent_delete(chat_id: int, message_id: int, text: str) -> None:
         """Handle delete/close commands in reply messages"""
         try:
-            if not any(keyword in text.lower() for keyword in MessageHandler.DELETE_KEYWORDS):
+            delete_keywords = MessageHandler.get_delete_keywords()
+            if not delete_keywords:
+                return
+            if not any(keyword in text.lower() for keyword in delete_keywords):
                 return
 
             signal = Migrations.get_signal_by_chat(chat_id, message_id)
@@ -274,7 +309,10 @@ class MessageHandler:
     def handle_parent_risk_free(chat_id: int, message_id: int, text: str) -> None:
         """Handle risk-free commands in reply messages"""
         try:
-            if not any(keyword in text.lower() for keyword in MessageHandler.RISK_FREE_KEYWORDS):
+            risk_free_keywords = MessageHandler.get_risk_free_keywords()
+            if not risk_free_keywords:
+                return
+            if not any(keyword in text.lower() for keyword in risk_free_keywords):
                 return
 
             logger.info(f"Applying risk-free to positions for chat {chat_id}, message {message_id}")
@@ -287,7 +325,10 @@ class MessageHandler:
     def handle_parent_tp(chat_id: int, message_id: int, text: str) -> None:
         """Handle TP commands in reply messages - close all positions if they didn't open in open trades"""
         try:
-            if not any(keyword in text.lower() for keyword in MessageHandler.TP_KEYWORDS):
+            tp_keywords = MessageHandler.get_tp_keywords()
+            if not tp_keywords:
+                return
+            if not any(keyword in text.lower() for keyword in tp_keywords):
                 return
 
             logger.info(f"Processing TP command for chat {chat_id}, message {message_id}")
@@ -374,6 +415,27 @@ class MessageHandler:
 
         except Exception as e:
             logger.error(f"Error handling TP command: {e}")
+
+
+# Legacy class attributes for backward compatibility
+def _get_edit_keywords():
+    return MessageHandler.get_edit_keywords()
+
+def _get_delete_keywords():
+    return MessageHandler.get_delete_keywords()
+
+def _get_risk_free_keywords():
+    return MessageHandler.get_risk_free_keywords()
+
+def _get_tp_keywords():
+    return MessageHandler.get_tp_keywords()
+
+
+# Set as class attributes
+MessageHandler.EDIT_KEYWORDS = property(_get_edit_keywords)
+MessageHandler.DELETE_KEYWORDS = property(_get_delete_keywords)
+MessageHandler.RISK_FREE_KEYWORDS = property(_get_risk_free_keywords)
+MessageHandler.TP_KEYWORDS = property(_get_tp_keywords)
 
 
 # Backward compatibility functions
