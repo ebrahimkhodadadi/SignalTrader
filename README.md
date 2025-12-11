@@ -23,22 +23,25 @@ If you're new to SignalTrader and just want to get started quickly:
 
 ```json
 {
-  "MetaTrader": {
-    "server": "YOUR_MT5_SERVER_HERE",        // Your MetaTrader 5 server
-    "username": 12345678,                    // Your MT5 account number
-    "password": "YOUR_MT5_PASSWORD_HERE",    // Your MT5 password
-    "path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
-  },
-  "Telegram": {
-    "api_id": 12345678,                      // Your Telegram API ID
-    "api_hash": "YOUR_TELEGRAM_API_HASH_HERE", // Your Telegram API Hash
-    "channels": {
-      "whiteList": ["@your_channel_username"] // Telegram channels to monitor
+  "providers": {
+    "telegram": {
+      "api_id": 12345678,
+      "api_hash": "YOUR_TELEGRAM_API_HASH",
+      "channels": {
+        "whiteList": ["@your_signal_channel"],
+        "blackList": []
+      }
     }
   },
+  "MetaTrader": {
+    "server": "YOUR_MT5_SERVER",
+    "username": 12345678,
+    "password": "YOUR_MT5_PASSWORD",
+    "path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+  },
   "Notification": {
-    "token": "YOUR_TELEGRAM_BOT_TOKEN_HERE", // Telegram bot for notifications
-    "chatId": 123456789                      // Chat ID for notifications
+    "token": "YOUR_TELEGRAM_BOT_TOKEN",
+    "chatId": 123456789
   }
 }
 ```
