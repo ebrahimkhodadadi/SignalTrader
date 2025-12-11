@@ -8,6 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from datetime import datetime
 import MetaTrader5 as mt5
+import asyncio
 
 from Database.database_manager import db_manager
 from .helpers import find_signal_by_ticket, get_position_for_signal
@@ -19,6 +20,13 @@ class ViewManager:
     def __init__(self, meta_trader, user_states: dict):
         self.meta_trader = meta_trader
         self.user_states = user_states
+        self.active_updates = {}  # Track active auto-updates: {user_id: {"state": "signal_list", "message_id": 123, "chat_id": 456}}
+        self.update_interval = 5  # Update every 5 seconds
+
+    def _stop_auto_update(self, user_id: int) -> None:
+        """Stop auto-update for a user"""
+        if user_id in self.active_updates:
+            del self.active_updates[user_id]
 
     async def show_open_trade_form(self, query, user_id: int) -> None:
         """Show form to open a new manual trade"""
@@ -170,10 +178,139 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
 
             text = "\n".join(text_parts)
             await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            
+            # Store message info for auto-update
+            self.active_updates[user_id] = {
+                "state": "signal_list",
+                "message_id": query.message.message_id,
+                "chat_id": query.message.chat_id,
+                "last_text": text,  # Store for comparison
+                "last_buttons": buttons
+            }
+            
+            # Start auto-update task for this user
+            asyncio.create_task(self._auto_update_signal_list(user_id, query.get_bot()))
 
         except Exception as e:
             logger.error(f"Error showing signal list: {e}")
             await query.edit_message_text(f"❌ Error: {str(e)}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]))
+
+    async def _auto_update_signal_list(self, user_id: int, bot) -> None:
+        """Automatically update signal list for user every 5 seconds"""
+        try:
+            while user_id in self.active_updates and self.active_updates[user_id]["state"] == "signal_list":
+                await asyncio.sleep(self.update_interval)
+                
+                # Check if user is still on signal_list page
+                if user_id not in self.active_updates or self.active_updates[user_id]["state"] != "signal_list":
+                    break
+                
+                update_info = self.active_updates[user_id]
+                
+                if not self.meta_trader:
+                    continue
+
+                positions = self.meta_trader.get_open_positions() or []
+                orders = self.meta_trader.get_pending_orders() or []
+
+                if not positions and not orders:
+                    text = "📭 No active positions or orders"
+                    buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]
+                else:
+                    # Group positions/orders by signal
+                    signals_dict = {}
+                    
+                    for pos in positions:
+                        ticket = pos.ticket if hasattr(pos, 'ticket') else pos.get("ticket")
+                        signal = find_signal_by_ticket(ticket)
+                        if signal:
+                            signal_id = signal.id if hasattr(signal, 'id') else signal.get("id")
+                            if signal_id not in signals_dict:
+                                signals_dict[signal_id] = {"signal": signal, "positions": [], "orders": []}
+                            signals_dict[signal_id]["positions"].append({"ticket": ticket, "data": pos})
+
+                    for order in orders:
+                        ticket = order.ticket if hasattr(order, 'ticket') else order.get("ticket")
+                        signal = find_signal_by_ticket(ticket)
+                        if signal:
+                            signal_id = signal.id if hasattr(signal, 'id') else signal.get("id")
+                            if signal_id not in signals_dict:
+                                signals_dict[signal_id] = {"signal": signal, "positions": [], "orders": []}
+                            signals_dict[signal_id]["orders"].append({"ticket": ticket, "data": order})
+
+                    if not signals_dict:
+                        text = "📭 No active positions or orders linked to signals"
+                        buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]
+                    else:
+                        # Build updated text and buttons
+                        text_parts = ["📊 **Active Signals - Grouped by Signal** 🔄 (Auto-updating)\n"]
+                        buttons = []
+
+                        for signal_id, signal_data in signals_dict.items():
+                            signal = signal_data["signal"]
+                            signal_type = signal.signal_type if hasattr(signal, 'signal_type') else signal.get("signal_type", "N/A")
+                            num_positions = len(signal_data["positions"])
+                            num_orders = len(signal_data["orders"])
+                            
+                            # Get channel and message info
+                            channel_title = signal.telegram_channel_title if hasattr(signal, 'telegram_channel_title') else signal.get("telegram_channel_title", "Unknown")
+                            chat_id = signal.telegram_message_chatid if hasattr(signal, 'telegram_message_chatid') else signal.get("telegram_message_chatid")
+                            message_id = signal.telegram_message_id if hasattr(signal, 'telegram_message_id') else signal.get("telegram_message_id")
+                            
+                            # Build message link
+                            message_link = "N/A"
+                            if chat_id and message_id:
+                                message_link = f"https://t.me/c/{abs(chat_id)}/{message_id}"
+                            
+                            # Get ticket IDs
+                            position_tickets = [pos["ticket"] for pos in signal_data["positions"]]
+                            order_tickets = [order["ticket"] for order in signal_data["orders"]]
+                            all_tickets = position_tickets + order_tickets
+                            tickets_text = " / ".join(str(t) for t in all_tickets) if all_tickets else "None"
+                            
+                            # Add signal type emoji
+                            type_emoji = "🟢" if signal_type == "BUY" else "🔴"
+                            
+                            text_parts.append(f"\n**#{signal_id}:**")
+                            text_parts.append(f"**Channel:** {channel_title}")
+                            text_parts.append(f"**Message:** [{message_link}]({message_link})")
+                            text_parts.append(f"{type_emoji} **{signal_type} | Tickets: {tickets_text}**")
+                            text_parts.append(f"  📈 Positions: {num_positions} | ⏳ Orders: {num_orders}")
+                            
+                            button_text = f"{type_emoji} #{signal_id} - {channel_title}"
+                            buttons.append([InlineKeyboardButton(button_text, callback_data=f"signal_{signal_id}")])
+
+                        buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="menu")])
+                        text = "\n".join(text_parts)
+
+                # Only update if content has changed
+                content_changed = (update_info.get("last_text") != text or 
+                                 update_info.get("last_buttons") != buttons)
+                
+                if content_changed:
+                    # Update the message
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=update_info["chat_id"],
+                            message_id=update_info["message_id"],
+                            text=text,
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(buttons)
+                        )
+                        # Update stored content for next comparison
+                        update_info["last_text"] = text
+                        update_info["last_buttons"] = buttons
+                    except Exception as e:
+                        logger.debug(f"Could not update signal list for user {user_id}: {e}")
+                        # Stop updating if message no longer exists
+                        if user_id in self.active_updates:
+                            del self.active_updates[user_id]
+                        break
+                    
+        except Exception as e:
+            logger.error(f"Error in auto-update signal list: {e}")
+            if user_id in self.active_updates:
+                del self.active_updates[user_id]
 
     async def show_signal_detail(self, query, user_id: int, signal_id: int) -> None:
         """Show signal details with message link and action buttons"""
@@ -181,6 +318,9 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
             logger.info(f"Showing signal detail for signal_id={signal_id}")
             STATE_VIEWING_SIGNAL = "viewing_signal"
             self.user_states[user_id] = {"state": STATE_VIEWING_SIGNAL, "context": {"signal_id": signal_id}}
+            
+            # Stop auto-update for this user
+            self._stop_auto_update(user_id)
 
             signal_repo = db_manager.get_signal_repository()
             signal = signal_repo.get_signal_by_id(signal_id)
@@ -421,19 +561,102 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
                 button_text = f"⏳ {ticket}"
                 buttons.append([InlineKeyboardButton(button_text, callback_data=f"position_{ticket}")])
 
-            text = f"📈 **Positions & Orders**\n\n**Open:** {len(positions)} | **Pending:** {len(orders)}\n\nSelect for actions:"
+            text = f"📈 **Positions & Orders** 🔄 (Auto-updating)\n\n**Open:** {len(positions)} | **Pending:** {len(orders)}\n\nSelect for actions:"
             buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="menu")])
             await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            
+            # Store message info for auto-update
+            self.active_updates[user_id] = {
+                "state": "position_list",
+                "message_id": query.message.message_id,
+                "chat_id": query.message.chat_id,
+                "last_text": text,  # Store for comparison
+                "last_buttons": buttons
+            }
+            
+            # Start auto-update task for this user
+            asyncio.create_task(self._auto_update_position_list(user_id, query.get_bot()))
 
         except Exception as e:
             logger.error(f"Error showing position list: {e}")
             await query.edit_message_text(f"❌ Error: {str(e)}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]))
+
+    async def _auto_update_position_list(self, user_id: int, bot) -> None:
+        """Automatically update position list for user every 5 seconds"""
+        try:
+            while user_id in self.active_updates and self.active_updates[user_id]["state"] == "position_list":
+                await asyncio.sleep(self.update_interval)
+                
+                # Check if user is still on position_list page
+                if user_id not in self.active_updates or self.active_updates[user_id]["state"] != "position_list":
+                    break
+                
+                update_info = self.active_updates[user_id]
+                
+                if not self.meta_trader:
+                    continue
+
+                positions = self.meta_trader.get_open_positions() or []
+                orders = self.meta_trader.get_pending_orders() or []
+
+                if not positions and not orders:
+                    text = "📭 No open positions or pending orders"
+                    buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]
+                else:
+                    buttons = []
+
+                    for pos in positions:
+                        symbol = pos.symbol if hasattr(pos, 'symbol') else pos.get("symbol", "UNKNOWN")
+                        ticket = pos.ticket if hasattr(pos, 'ticket') else pos.get("ticket")
+                        button_text = f"📈 {ticket}"
+                        buttons.append([InlineKeyboardButton(button_text, callback_data=f"position_{ticket}")])
+
+                    for order in orders:
+                        symbol = order.symbol if hasattr(order, 'symbol') else order.get("symbol", "UNKNOWN")
+                        ticket = order.ticket if hasattr(order, 'ticket') else order.get("ticket")
+                        button_text = f"⏳ {ticket}"
+                        buttons.append([InlineKeyboardButton(button_text, callback_data=f"position_{ticket}")])
+
+                    text = f"📈 **Positions & Orders** 🔄 (Auto-updating)\n\n**Open:** {len(positions)} | **Pending:** {len(orders)}\n\nSelect for actions:"
+                    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="menu")])
+
+                # Only update if content has changed
+                content_changed = (update_info.get("last_text") != text or 
+                                 update_info.get("last_buttons") != buttons)
+                
+                if content_changed:
+                    # Update the message
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=update_info["chat_id"],
+                            message_id=update_info["message_id"],
+                            text=text,
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(buttons)
+                        )
+                        # Update stored content for next comparison
+                        update_info["last_text"] = text
+                        update_info["last_buttons"] = buttons
+                    except Exception as e:
+                        logger.debug(f"Could not update position list for user {user_id}: {e}")
+                        # Stop updating if message no longer exists
+                        if user_id in self.active_updates:
+                            del self.active_updates[user_id]
+                        break
+                    
+        except Exception as e:
+            logger.error(f"Error in auto-update position list: {e}")
+            if user_id in self.active_updates:
+                del self.active_updates[user_id]
 
     async def show_position_detail(self, query, user_id: int, ticket: int) -> None:
         """Show position/order details with action buttons"""
         try:
             STATE_VIEWING_POSITION = "viewing_position"
             self.user_states[user_id] = {"state": STATE_VIEWING_POSITION, "context": {"ticket": ticket}}
+            
+            # Stop auto-update for this user
+            self._stop_auto_update(user_id)
 
             if not self.meta_trader:
                 await query.edit_message_text("❌ MetaTrader not available")
@@ -566,7 +789,7 @@ Will export:
 
             text = f"""👋 **Welcome to Signal Trader Bot**
 
-📊 **Account Details {account_info.login} **
+📊 **Account Details** - {account_info.login}
 
 **Balance:** ${balance:,.2f}
 **Equity:** ${equity:,.2f}
@@ -595,21 +818,130 @@ _Updated: {datetime.now().strftime('%H:%M:%S')}_
                 ],
             ]
             
-            await update.message.reply_text(
+            message = await update.message.reply_text(
                 text,
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
+            
+            # Store message info for auto-update with bot context
+            self.active_updates[user_id] = {
+                "state": "main_menu",
+                "message_id": message.message_id,
+                "chat_id": message.chat_id,
+                "last_text": text,  # Store for comparison
+                "last_buttons": buttons,
+                "context": update.get_bot()  # Store bot for later use
+            }
+            
+            # Start auto-update task for this user
+            asyncio.create_task(self._auto_update_account_details(user_id))
 
         except Exception as e:
             logger.error(f"Error showing account details: {e}")
             await update.message.reply_text(f"❌ Error: {str(e)}")
+
+    async def _auto_update_account_details(self, user_id: int) -> None:
+        """Automatically update account details for user every 5 seconds"""
+        try:
+            while user_id in self.active_updates and self.active_updates[user_id]["state"] == "main_menu":
+                await asyncio.sleep(self.update_interval)
+                
+                # Check if user is still on main_menu page
+                if user_id not in self.active_updates or self.active_updates[user_id]["state"] != "main_menu":
+                    break
+                
+                update_info = self.active_updates[user_id]
+                bot = update_info.get("context")
+                
+                if not bot or not self.meta_trader:
+                    continue
+
+                account_info = mt5.account_info()
+                if not account_info:
+                    continue
+
+                positions = self.meta_trader.get_open_positions() or []
+                orders = self.meta_trader.get_pending_orders() or []
+
+                # Calculate account metrics
+                balance = account_info.balance
+                equity = account_info.equity
+                profit = equity - balance
+                profit_percent = (profit / balance * 100) if balance else 0
+                profit_emoji = "📈" if profit >= 0 else "📉"
+                
+                margin_usage = ((account_info.margin / (account_info.margin + account_info.margin_free)) * 100) if (account_info.margin + account_info.margin_free) > 0 else 0
+                margin_emoji = "🟢" if margin_usage < 70 else "🟡" if margin_usage < 90 else "🔴"
+
+                text = f"""👋 **Welcome to Signal Trader Bot**
+
+📊 **Account Details** - {account_info.login}
+
+**Balance:** ${balance:,.2f}
+**Equity:** ${equity:,.2f}
+{profit_emoji} **P&L:** ${profit:,.2f} ({profit_percent:+.2f}%)
+
+💰 **Margin Info**
+**Margin Used:** ${account_info.margin:,.2f}
+**Free Margin:** ${account_info.margin_free:,.2f}
+{margin_emoji} **Usage:** {margin_usage:.1f}%
+
+📈 **Positions:** {len(positions)} open
+⏳ **Pending Orders:** {len(orders)}
+
+_Updated: {datetime.now().strftime('%H:%M:%S')}_
+
+**Select an option:**"""
+
+                buttons = [
+                    [
+                        InlineKeyboardButton("📊 Active Signals", callback_data="signals"),
+                        InlineKeyboardButton("📈 Active Positions", callback_data="positions"),
+                    ],
+                    [
+                        InlineKeyboardButton("🔄 New Trade", callback_data="open_trade"),
+                        InlineKeyboardButton("🧪 Signal Tester", callback_data="tester"),
+                    ],
+                ]
+
+                # Only update if content has changed
+                content_changed = (update_info.get("last_text") != text or 
+                                 update_info.get("last_buttons") != buttons)
+                
+                if content_changed:
+                    # Update the message
+                    try:
+                        await bot.edit_message_text(
+                            chat_id=update_info["chat_id"],
+                            message_id=update_info["message_id"],
+                            text=text,
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(buttons)
+                        )
+                        # Update stored content for next comparison
+                        update_info["last_text"] = text
+                        update_info["last_buttons"] = buttons
+                    except Exception as e:
+                        logger.debug(f"Could not update account details for user {user_id}: {e}")
+                        # Stop updating if message no longer exists
+                        if user_id in self.active_updates:
+                            del self.active_updates[user_id]
+                        break
+                    
+        except Exception as e:
+            logger.error(f"Error in auto-update account details: {e}")
+            if user_id in self.active_updates:
+                del self.active_updates[user_id]
 
     async def show_account_details_from_callback(self, query, user_id: int) -> None:
         """Show account details from callback (used for menu navigation)"""
         try:
             STATE_MAIN_MENU = "main_menu"
             self.user_states[user_id] = {"state": STATE_MAIN_MENU, "context": {}}
+            
+            # Stop auto-update for this user
+            self._stop_auto_update(user_id)
 
             if not self.meta_trader:
                 await query.edit_message_text("❌ MetaTrader not available")
@@ -635,7 +967,7 @@ _Updated: {datetime.now().strftime('%H:%M:%S')}_
 
             text = f"""👋 **Welcome to Signal Trader Bot**
 
-📊 **Account Details {account_info.login} **
+📊 **Account Details** - {account_info.login}
 
 **Balance:** ${balance:,.2f}
 **Equity:** ${equity:,.2f}

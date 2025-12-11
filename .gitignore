@@ -3,6 +3,7 @@
 .venv/
 *.session-journal
 *.db
+*.db*
 __pycache__/*
 __pycache__
 build/*
