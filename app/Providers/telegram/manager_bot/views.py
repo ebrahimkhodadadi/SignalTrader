@@ -20,33 +20,6 @@ class ViewManager:
         self.meta_trader = meta_trader
         self.user_states = user_states
 
-    async def show_main_menu(self, query) -> None:
-        """Show main menu with inline buttons"""
-        try:
-            text = """👋 **Signal Trader Bot Menu**
-
-Select an option:"""
-            buttons = [
-                [
-                    InlineKeyboardButton("📊 Active Signals", callback_data="signals"),
-                    InlineKeyboardButton("📈 Active Positions", callback_data="positions"),
-                ],
-                [
-                    InlineKeyboardButton("🔄 New Trade", callback_data="open_trade"),
-                    InlineKeyboardButton("🧪 Signal Tester", callback_data="tester"),
-                ],
-                [
-                    InlineKeyboardButton("💼 Trade Summary", callback_data="trade"),
-                ],
-            ]
-            await query.edit_message_text(
-                text,
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
-        except Exception as e:
-            logger.error(f"Error showing main menu: {e}")
-
     async def show_open_trade_form(self, query, user_id: int) -> None:
         """Show form to open a new manual trade"""
         try:
@@ -562,6 +535,144 @@ Will export:
         except Exception as e:
             logger.error(f"Error showing tester: {e}")
             await query.edit_message_text(f"❌ Error: {str(e)}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="menu")]]))
+
+    async def show_account_details(self, update: Update, user_id: int) -> None:
+        """Show full account details with main menu buttons on startup"""
+        try:
+            STATE_MAIN_MENU = "main_menu"
+            self.user_states[user_id] = {"state": STATE_MAIN_MENU, "context": {}}
+
+            if not self.meta_trader:
+                await update.message.reply_text("❌ MetaTrader not available")
+                return
+
+            account_info = mt5.account_info()
+            if not account_info:
+                await update.message.reply_text("❌ Unable to fetch account info")
+                return
+
+            positions = self.meta_trader.get_open_positions() or []
+            orders = self.meta_trader.get_pending_orders() or []
+
+            # Calculate account metrics
+            balance = account_info.balance
+            equity = account_info.equity
+            profit = equity - balance
+            profit_percent = (profit / balance * 100) if balance else 0
+            profit_emoji = "📈" if profit >= 0 else "📉"
+            
+            margin_usage = ((account_info.margin / (account_info.margin + account_info.margin_free)) * 100) if (account_info.margin + account_info.margin_free) > 0 else 0
+            margin_emoji = "🟢" if margin_usage < 70 else "🟡" if margin_usage < 90 else "🔴"
+
+            text = f"""👋 **Welcome to Signal Trader Bot**
+
+📊 **Account Details {account_info.login} **
+
+**Balance:** ${balance:,.2f}
+**Equity:** ${equity:,.2f}
+{profit_emoji} **P&L:** ${profit:,.2f} ({profit_percent:+.2f}%)
+
+💰 **Margin Info**
+**Margin Used:** ${account_info.margin:,.2f}
+**Free Margin:** ${account_info.margin_free:,.2f}
+{margin_emoji} **Usage:** {margin_usage:.1f}%
+
+📈 **Positions:** {len(positions)} open
+⏳ **Pending Orders:** {len(orders)}
+
+_Updated: {datetime.now().strftime('%H:%M:%S')}_
+
+**Select an option:**"""
+
+            buttons = [
+                [
+                    InlineKeyboardButton("📊 Active Signals", callback_data="signals"),
+                    InlineKeyboardButton("📈 Active Positions", callback_data="positions"),
+                ],
+                [
+                    InlineKeyboardButton("🔄 New Trade", callback_data="open_trade"),
+                    InlineKeyboardButton("🧪 Signal Tester", callback_data="tester"),
+                ],
+            ]
+            
+            await update.message.reply_text(
+                text,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+
+        except Exception as e:
+            logger.error(f"Error showing account details: {e}")
+            await update.message.reply_text(f"❌ Error: {str(e)}")
+
+    async def show_account_details_from_callback(self, query, user_id: int) -> None:
+        """Show account details from callback (used for menu navigation)"""
+        try:
+            STATE_MAIN_MENU = "main_menu"
+            self.user_states[user_id] = {"state": STATE_MAIN_MENU, "context": {}}
+
+            if not self.meta_trader:
+                await query.edit_message_text("❌ MetaTrader not available")
+                return
+
+            account_info = mt5.account_info()
+            if not account_info:
+                await query.edit_message_text("❌ Unable to fetch account info")
+                return
+
+            positions = self.meta_trader.get_open_positions() or []
+            orders = self.meta_trader.get_pending_orders() or []
+
+            # Calculate account metrics
+            balance = account_info.balance
+            equity = account_info.equity
+            profit = equity - balance
+            profit_percent = (profit / balance * 100) if balance else 0
+            profit_emoji = "📈" if profit >= 0 else "📉"
+            
+            margin_usage = ((account_info.margin / (account_info.margin + account_info.margin_free)) * 100) if (account_info.margin + account_info.margin_free) > 0 else 0
+            margin_emoji = "🟢" if margin_usage < 70 else "🟡" if margin_usage < 90 else "🔴"
+
+            text = f"""👋 **Welcome to Signal Trader Bot**
+
+📊 **Account Details {account_info.login} **
+
+**Balance:** ${balance:,.2f}
+**Equity:** ${equity:,.2f}
+{profit_emoji} **P&L:** ${profit:,.2f} ({profit_percent:+.2f}%)
+
+💰 **Margin Info**
+**Margin Used:** ${account_info.margin:,.2f}
+**Free Margin:** ${account_info.margin_free:,.2f}
+{margin_emoji} **Usage:** {margin_usage:.1f}%
+
+📈 **Positions:** {len(positions)} open
+⏳ **Pending Orders:** {len(orders)}
+
+_Updated: {datetime.now().strftime('%H:%M:%S')}_
+
+**Select an option:**"""
+
+            buttons = [
+                [
+                    InlineKeyboardButton("📊 Active Signals", callback_data="signals"),
+                    InlineKeyboardButton("📈 Active Positions", callback_data="positions"),
+                ],
+                [
+                    InlineKeyboardButton("🔄 New Trade", callback_data="open_trade"),
+                    InlineKeyboardButton("🧪 Signal Tester", callback_data="tester"),
+                ],
+            ]
+            
+            await query.edit_message_text(
+                text,
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+
+        except Exception as e:
+            logger.error(f"Error showing account details from callback: {e}")
+            await query.edit_message_text(f"❌ Error: {str(e)}")
 
     async def show_trade_summary(self, query, user_id: int) -> None:
         """Show trade summary with account stats"""

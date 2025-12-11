@@ -24,37 +24,14 @@ class HandlerManager:
     STATE_TESTER = "tester"
 
     async def handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /start command - Main menu with INLINE buttons only"""
+        """Handle /start command - Show account details and main menu"""
         try:
             user_id = update.effective_user.id
             self.user_states[user_id] = {
                 "state": self.STATE_MAIN_MENU, "context": {}}
 
-            text = """👋 **Welcome to Signal Trader Bot**
-
-Manage your active signals and positions.
-
-**Available options:**"""
-
-            buttons = [
-                [
-                    InlineKeyboardButton("📊 Active Signals", callback_data="signals"),
-                    InlineKeyboardButton("📈 Active Positions", callback_data="positions"),
-                ],
-                [
-                    InlineKeyboardButton("🔄 New Trade", callback_data="open_trade"),
-                    InlineKeyboardButton("🧪 Signal Tester", callback_data="tester"),
-                ],
-                [
-                    InlineKeyboardButton("💼 Trade Summary", callback_data="trade"),
-                ],
-            ]
-
-            await update.message.reply_text(
-                text,
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
+            # Show account details and main menu
+            await self.views.show_account_details(update, user_id)
         except Exception as e:
             logger.error(f"Error handling start: {e}")
 
@@ -70,7 +47,8 @@ Manage your active signals and positions.
 
             # Handle single-word callbacks first (before splitting)
             if callback_data == "menu":
-                await self.views.show_main_menu(query)
+                # Show account details as main menu
+                await self.views.show_account_details_from_callback(query, user_id)
                 return
             elif callback_data == "signals":
                 await self.views.show_signal_list(query, user_id)
