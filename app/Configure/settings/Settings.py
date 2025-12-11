@@ -287,6 +287,24 @@ class SafeConfig:
                 self.mention_mode = (discord_config.get('mention_mode') if isinstance(discord_config, dict) else getattr(discord_config, 'mention_mode', False)) or False
         return DiscordConfig(self)
 
+    @property
+    def TelegramBot(self):
+        """Telegram Bot (manager) config access from providers section"""
+        class TelegramBotConfig:
+            def __init__(self, parent):
+                self._parent = parent
+                # Access raw config to get providers -> telegram_bot
+                raw_config = parent._config
+                providers = raw_config.get('providers', {}) if isinstance(raw_config, dict) else {}
+                tg_bot_config = providers.get('telegram_bot', {}) if isinstance(providers, dict) else {}
+                
+                # Extract values directly from the dict
+                self.enabled = tg_bot_config.get('enabled', True) if isinstance(tg_bot_config, dict) else True
+                self.bot_token = tg_bot_config.get('bot_token') if isinstance(tg_bot_config, dict) else None
+                self.allowed_users = tg_bot_config.get('allowed_users', []) if isinstance(tg_bot_config, dict) else []
+                self.button_labels = tg_bot_config.get('button_labels', {}) if isinstance(tg_bot_config, dict) else {}
+        return TelegramBotConfig(self)
+
 
 class SettingsManager:
     """Static settings manager for global access"""

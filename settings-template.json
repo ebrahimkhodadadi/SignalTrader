@@ -17,17 +17,33 @@
       "blackList": []
     }
   },
-  "Telegram": {
-    "api_id": 12345678,
-    "api_hash": "YOUR_TELEGRAM_API_HASH_HERE",
-    "channels": {
-      "whiteList": ["@your_channel_username"],
-      "blackList": []
-    }
-  },
   "Notification": {
     "token": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
     "chatId": 123456789
+  },
+  "providers": {
+    "telegram_bot": {
+      "enabled": true,
+      "bot_token": null,
+      "allowed_users": [],
+      "button_labels": {
+        "close_full": "Close Full",
+        "close_half": "Close Half",
+        "risk_free": "Risk Free",
+        "refresh": "Refresh",
+        "update_sl": "Update SL",
+        "trail_sl": "Trail SL",
+        "save_profit": "Save Profit"
+      }
+    },
+    "Telegram": {
+      "api_id": 12345678,
+      "api_hash": "YOUR_TELEGRAM_API_HASH_HERE",
+      "channels": {
+        "whiteList": ["@your_channel_username"],
+        "blackList": []
+      }
+    }
   },
   "Timer": {
     "start": null,

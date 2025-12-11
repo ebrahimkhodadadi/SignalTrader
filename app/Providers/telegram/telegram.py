@@ -234,7 +234,7 @@ class TelegramClientManager:
             # Process the message
             # logger.debug(f"Processing {message_type.name} message from {username or chat_id}")
             Handle(message_type, text, message_link,
-                   username, message_id, chat_id)
+                   username, message_id, chat_id, provider="telegram")
 
         except Exception as e:
             logger.error(f"Error processing message event: {e}")

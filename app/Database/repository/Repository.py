@@ -19,7 +19,12 @@ class SQLiteRepository(Generic[T]):
             self.cache = None
     
     def _connect(self):
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        # Enable WAL mode for better concurrency
+        conn.execute('PRAGMA journal_mode=WAL')
+        # Increase timeout for busy database
+        conn.execute('PRAGMA busy_timeout=10000')
+        return conn
     
     def create_table(self, columns: Dict[str, str]):
         with self._connect() as conn:

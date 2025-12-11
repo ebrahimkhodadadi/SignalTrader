@@ -25,6 +25,17 @@ class PositionRepository:
         result = self.repository.get_by_id(position_id)
         return PositionModel.from_tuple(result) if result else None
 
+    def get_position_by_ticket(self, ticket: int) -> Optional[PositionModel]:
+        """Get position by MT5 ticket (position_id field)"""
+        query = """
+            SELECT *
+            FROM positions
+            WHERE position_id = ?
+            LIMIT 1
+        """
+        results = self.repository.execute_query(query, (ticket,))
+        return PositionModel.from_tuple(results[0]) if results else None
+
     def get_positions_by_signal_id(self, signal_id: int) -> List[PositionModel]:
         """Get all positions for a signal"""
         query = """
@@ -106,6 +117,75 @@ class PositionRepository:
         """Get all positions"""
         results = self.repository.get_all()
         return [PositionModel.from_tuple(result) for result in results]
+
+    def get_active_positions_with_signals(self) -> List[Dict]:
+        """Get all active positions linked with signal details"""
+        query = """
+            SELECT
+                p.id as position_id,
+                p.signal_id,
+                p.position_id as mt_ticket,
+                s.symbol,
+                s.open_price,
+                s.stop_loss,
+                s.tp_list,
+                s.telegram_message_chatid as chat_id,
+                s.telegram_message_id as message_id
+            FROM positions p
+            INNER JOIN signals s ON p.signal_id = s.id
+            ORDER BY p.id DESC
+        """
+        results = self.repository.execute_query(query)
+        if not results:
+            return []
+
+        positions = []
+        for result in results:
+            positions.append({
+                "position_id": result[0],
+                "signal_id": result[1],
+                "mt_ticket": result[2],
+                "symbol": result[3],
+                "entry_price": result[4],
+                "stop_loss": result[5],
+                "take_profits": result[6],
+                "chat_id": result[7],
+                "message_id": result[8]
+            })
+        return positions
+
+    def get_positions_by_signal_id_with_details(self, signal_id: int) -> List[Dict]:
+        """Get all positions for a signal with details"""
+        query = """
+            SELECT
+                p.id,
+                p.signal_id,
+                p.position_id as mt_ticket,
+                s.symbol,
+                s.open_price,
+                s.stop_loss,
+                s.tp_list
+            FROM positions p
+            INNER JOIN signals s ON p.signal_id = s.id
+            WHERE p.signal_id = ?
+            ORDER BY p.id DESC
+        """
+        results = self.repository.execute_query(query, (signal_id,))
+        if not results:
+            return []
+
+        positions = []
+        for result in results:
+            positions.append({
+                "position_id": result[0],
+                "signal_id": result[1],
+                "mt_ticket": result[2],
+                "symbol": result[3],
+                "entry_price": result[4],
+                "stop_loss": result[5],
+                "take_profits": result[6]
+            })
+        return positions
 
 
 # Global instance for backward compatibility

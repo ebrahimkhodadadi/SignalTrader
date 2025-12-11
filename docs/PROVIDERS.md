@@ -35,6 +35,29 @@ Configure under `providers.telegram`:
 }
 ```
 
+### Telegram Manager Bot
+Interactive trade management interface. Configure under `providers.telegram_bot`:
+```json
+{
+  "providers": {
+    "telegram_bot": {
+      "enabled": true,
+      "bot_token": null,
+      "manager_chat_ids": [123456789],
+      "allowed_users": [],
+      "button_labels": {
+        "close_full": "Close Full",
+        "close_half": "Close Half",
+        "risk_free": "Risk Free",
+        "refresh": "Refresh"
+      }
+    }
+  }
+}
+```
+
+See [Telegram Manager Bot Documentation](./TelegramManagerBot.md) for detailed setup and usage.
+
 ### Discord
 Configure under `providers.discord`:
 ```json

@@ -43,7 +43,7 @@ class TradingOperations:
         return MetaTrader(**mt_kwargs)
 
     @staticmethod
-    def trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment):
+    def trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment, provider="telegram"):
         """Execute a complete trading operation"""
         # logger.debug(f"Processing trade signal: {actionType.name} {symbol}")
 
@@ -146,7 +146,13 @@ class TradingOperations:
             conn = Migrations.signal_repo._connect()
             conn.execute("BEGIN TRANSACTION")
 
+            # Determine signal type from actionType
+            import MetaTrader5 as mt5
+            signal_type = "BUY" if actionType in [mt5.ORDER_TYPE_BUY, mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP] else "SELL"
+
             signal_data = {
+                "provider": provider,
+                "signal_type": signal_type,
                 "telegram_channel_title": message_username,
                 "telegram_message_id": message_id,
                 "telegram_message_chatid": message_chatid,

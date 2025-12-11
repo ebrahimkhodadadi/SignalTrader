@@ -108,19 +108,29 @@ class ApplicationRunner:
         logger.success("Connectivity validation completed")
 
     async def _check_telegram_connectivity(self) -> None:
-        """Check if Telegram API is accessible"""
+        """Check if Telegram API is accessible - independent connectivity check without token"""
+        import requests
+        
         max_retries = 5
         retry_delay = 3
+        telegram_api_url = "https://api.telegram.org"
 
+        # Check connectivity with retries
         for attempt in range(max_retries):
             try:
-                token = self.settings.Notification.token
-                if can_access_telegram(token):
-                    logger.success("Telegram API access confirmed")
+                logger.info(f"Checking Telegram API connectivity (attempt {attempt + 1}/{max_retries})...")
+                response = requests.head(telegram_api_url, timeout=5)
+                
+                if response.status_code in [200, 301, 302]:
+                    logger.success("Telegram API connectivity confirmed")
                     return
                 else:
-                    logger.warning(f"Telegram API access check failed (attempt {attempt + 1}/{max_retries})")
+                    logger.warning(f"Telegram API returned status {response.status_code}")
 
+            except requests.exceptions.Timeout:
+                logger.warning(f"Telegram API timeout (attempt {attempt + 1}/{max_retries})")
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"Telegram API connection failed (attempt {attempt + 1}/{max_retries})")
             except Exception as e:
                 logger.warning(f"Error checking Telegram connectivity: {e}")
 
@@ -129,7 +139,7 @@ class ApplicationRunner:
                 await asyncio.sleep(retry_delay)
 
         # If we get here, all retries failed
-        error_msg = "Unable to access Telegram API after multiple attempts. Please check your internet connection and API credentials."
+        error_msg = "Unable to access Telegram API. Please check your internet connection."
         logger.critical(error_msg)
         raise ConnectionError(error_msg)
 
@@ -229,8 +239,8 @@ class ApplicationRunner:
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
         finally:
-            # Ensure event loop stops
-            asyncio.get_event_loop().stop()
+            # Let asyncio.run() handle loop shutdown cleanly
+            pass
 
 
 async def main() -> NoReturn:

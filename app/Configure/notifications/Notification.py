@@ -21,8 +21,13 @@ class NotificationManager:
             chat_id: Telegram chat ID for notifications
 
         Returns:
-            True if configuration successful, False otherwise
+            True if configuration successful, False if skipped or error
         """
+        # Skip if token or chat_id are empty
+        if not token or not chat_id:
+            logger.warning("Telegram notification settings are empty - notifications will be skipped")
+            return False
+        
         try:
             params = {
                 "token": token,

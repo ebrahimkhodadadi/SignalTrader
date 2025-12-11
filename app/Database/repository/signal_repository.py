@@ -55,15 +55,17 @@ class SignalRepository:
         result = results[0]
         return {
             "id": result[0],
-            "telegram_channel_title": result[1],
-            "telegram_message_id": result[2],
-            "telegram_message_chatid": result[3],
-            "open_price": result[4],
-            "second_price": result[5],
-            "stop_loss": result[6],
-            "tp_list": result[7],
-            "symbol": result[8],
-            "current_time": result[9]
+            "provider": result[1],
+            "signal_type": result[2],
+            "telegram_channel_title": result[3],
+            "telegram_message_id": result[4],
+            "telegram_message_chatid": result[5],
+            "open_price": result[6],
+            "second_price": result[7],
+            "stop_loss": result[8],
+            "tp_list": result[9],
+            "symbol": result[10],
+            "current_time": result[11]
         }
 
     def get_last_record(self, open_price: float, second_price: Optional[float],
@@ -95,6 +97,90 @@ class SignalRepository:
         """Get all signals"""
         results = self.repository.get_all()
         return [SignalModel.from_tuple(result) for result in results]
+
+    def get_active_signals(self) -> List[Dict]:
+        """Get all active signals with linked positions"""
+        query = """
+            SELECT DISTINCT
+                s.id,
+                s.provider,
+                s.signal_type,
+                s.telegram_channel_title,
+                s.telegram_message_id,
+                s.telegram_message_chatid as chat_id,
+                s.open_price,
+                s.second_price,
+                s.stop_loss,
+                s.tp_list,
+                s.symbol,
+                s.current_time as created_at
+            FROM signals s
+            INNER JOIN positions p ON p.signal_id = s.id
+            ORDER BY s.id DESC
+        """
+        results = self.repository.execute_query(query)
+        if not results:
+            return []
+
+        signals = []
+        for result in results:
+            signals.append({
+                "id": result[0],
+                "provider": result[1],
+                "signal_type": result[2],
+                "telegram_channel_title": result[3],
+                "message_id": result[4],
+                "chat_id": result[5],
+                "open_price": result[6],
+                "second_price": result[7],
+                "stop_loss": result[8],
+                "take_profits": result[9],
+                "symbol": result[10],
+                "created_at": result[11]
+            })
+        return signals
+
+    def get_all_signals_paginated(self, limit: int = 50, offset: int = 0) -> List[Dict]:
+        """Get all signals with pagination"""
+        query = """
+            SELECT
+                s.id,
+                s.provider,
+                s.signal_type,
+                s.telegram_channel_title,
+                s.telegram_message_id,
+                s.telegram_message_chatid as chat_id,
+                s.open_price,
+                s.second_price,
+                s.stop_loss,
+                s.tp_list,
+                s.symbol,
+                s.current_time as created_at
+            FROM signals s
+            ORDER BY s.id DESC
+            LIMIT ? OFFSET ?
+        """
+        results = self.repository.execute_query(query, (limit, offset))
+        if not results:
+            return []
+
+        signals = []
+        for result in results:
+            signals.append({
+                "id": result[0],
+                "provider": result[1],
+                "signal_type": result[2],
+                "telegram_channel_title": result[3],
+                "message_id": result[4],
+                "chat_id": result[5],
+                "open_price": result[6],
+                "second_price": result[7],
+                "stop_loss": result[8],
+                "take_profits": result[9],
+                "symbol": result[10],
+                "created_at": result[11]
+            })
+        return signals
 
 
 # Global instance for backward compatibility

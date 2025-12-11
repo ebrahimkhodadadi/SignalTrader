@@ -7,7 +7,8 @@ Example settings.json (new unified structure):
     {
       "providers": {
         "telegram": { "api_id": 123, "api_hash": "..." },
-        "discord": { "bot_token": "..." }
+        "discord": { "bot_token": "..." },
+        "telegram_bot": { "bot_token": "...", "manager_chat_ids": [123] }
       }
     }
 
@@ -19,12 +20,14 @@ Legacy structure (still supported):
 
 New providers are automatically instantiated if their config section exists.
 """
-from typing import List
+from typing import List, Optional
 from loguru import logger
+import asyncio
 
 from Configure.settings.Settings import Settings
 from .provider import Provider
 from .telegram_provider import TelegramProvider
+from .telegram.manager_bot import TelegramManagerBot
 
 
 def get_providers() -> List[Provider]:
@@ -33,11 +36,13 @@ def get_providers() -> List[Provider]:
     Supports multiple simultaneous providers:
     - Telegram: configured via `providers.telegram` section (or legacy `Telegram`)
     - Discord: configured via `providers.discord` section (or legacy `Discord`)
+    - Telegram Manager Bot: configured via `telegram_bot` section (optional)
     
     Returns:
         List of instantiated Provider instances
     """
     providers: List[Provider] = []
+    telegram_provider = None
 
     try:
         cfg = Settings.get_instance()
@@ -49,7 +54,8 @@ def get_providers() -> List[Provider]:
             api_hash = getattr(telegram_cfg, 'api_hash', None)
 
             if api_id and api_hash:
-                providers.append(TelegramProvider(api_id, api_hash))
+                telegram_provider = TelegramProvider(api_id, api_hash)
+                providers.append(telegram_provider)
                 logger.info("Telegram provider loaded")
         except Exception as e:
             logger.warning(f"Failed to load Telegram provider: {e}")
@@ -76,6 +82,18 @@ def get_providers() -> List[Provider]:
         except Exception as e:
             logger.warning(f"Failed to load Discord provider: {e}")
 
+        # Telegram Manager Bot (Bot API-only, independent from user session)
+        try:
+            manager_bot = TelegramManagerBot.from_settings()
+            if manager_bot:
+                # Do NOT share TelegramProvider client. Manager bot must run on Bot API.
+                providers.append(manager_bot)
+                logger.info("Telegram Manager Bot loaded (Bot API mode)")
+            else:
+                logger.debug("Telegram Manager Bot not configured or disabled")
+        except Exception as e:
+            logger.warning(f"Failed to load Telegram Manager Bot: {e}")
+
         # Future providers can be added here following the same pattern
 
     except Exception as e:
@@ -85,3 +103,19 @@ def get_providers() -> List[Provider]:
         logger.warning("No providers configured. Please add Telegram or Discord config to settings.json")
 
     return providers
+
+
+def start_manager_bot(manager_bot: Optional[TelegramManagerBot]):
+    """Start the manager bot asynchronously
+    
+    Args:
+        manager_bot: TelegramManagerBot instance or None
+    """
+    if not manager_bot:
+        return
+    
+    try:
+        logger.info("Starting Telegram Manager Bot in background...")
+        asyncio.create_task(manager_bot.start())
+    except Exception as e:
+        logger.error(f"Error starting manager bot: {e}")

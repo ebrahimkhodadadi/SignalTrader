@@ -68,7 +68,7 @@ class MessageHandler:
     @staticmethod
     def handle_message(message_type: MessageType, text: str, comment: str,
                       username: Optional[str], message_id: Optional[int],
-                      chat_id: int) -> None:
+                      chat_id: int, provider: str = "telegram") -> None:
         """
         Main entry point for handling incoming messages.
 
@@ -79,6 +79,7 @@ class MessageHandler:
             username: Channel username
             message_id: Telegram message ID
             chat_id: Telegram chat ID
+            provider: Provider type (telegram, discord, etc.)
         """
         try:
             # logger.debug(f"Processing {message_type.name} message from chat {chat_id}")
@@ -92,7 +93,7 @@ class MessageHandler:
 
             # Process based on message type
             if message_type == MessageType.New:
-                MessageHandler._handle_new_signal(text, comment, username, message_id, chat_id)
+                MessageHandler._handle_new_signal(text, comment, username, message_id, chat_id, provider)
 
         except Exception as e:
             logger.error(f"Error handling message: {e}")
@@ -119,7 +120,7 @@ class MessageHandler:
 
     @staticmethod
     def _handle_new_signal(text: str, comment: str, username: Optional[str],
-                          message_id: Optional[int], chat_id: int) -> None:
+                          message_id: Optional[int], chat_id: int, provider: str = "telegram") -> None:
         """Handle new trading signal messages"""
         try:
             # Parse the signal
@@ -143,7 +144,7 @@ class MessageHandler:
 
             # Execute the trade
             Trade(username, message_id, chat_id, action_type, symbol,
-                  first_price, second_price, take_profits, stop_loss, comment)
+                  first_price, second_price, take_profits, stop_loss, comment, provider=provider)
 
         except Exception as e:
             logger.error(f"Error processing new signal: {e}")
@@ -439,9 +440,9 @@ MessageHandler.TP_KEYWORDS = property(_get_tp_keywords)
 
 
 # Backward compatibility functions
-def Handle(messageType, text, comment, username, message_id, chat_id):
+def Handle(messageType, text, comment, username, message_id, chat_id, provider="telegram"):
     """Legacy main handler function"""
-    MessageHandler.handle_message(messageType, text, comment, username, message_id, chat_id)
+    MessageHandler.handle_message(messageType, text, comment, username, message_id, chat_id, provider)
 
 def HandleOpenPosition(messageType, text, comment, message_username, message_id, chat_id):
     """Legacy position handler (now handled by handle_message)"""

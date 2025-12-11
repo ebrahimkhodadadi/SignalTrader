@@ -213,7 +213,8 @@ class DiscordClientManager:
                 comment=comment,
                 username=username,
                 message_id=message_id,
-                chat_id=chat_id
+                chat_id=chat_id,
+                provider="discord"
             )
 
         except ImportError:

@@ -8,6 +8,7 @@ to customizable keywords and regex patterns.
 from typing import Dict, List, Any, Union, Optional
 from loguru import logger
 from .file_loader import get_file_loader
+from .settings.Settings import Settings
 
 
 class ConfigLoader:
@@ -116,3 +117,17 @@ def get_regex_patterns() -> Dict[str, Any]:
 def reload_configs():
     """Reload all configurations"""
     get_config_loader().reload_configurations()
+
+
+# Settings helpers
+def get_providers_cfg() -> Dict[str, Any]:
+    """Return the providers configuration dict from the active settings file.
+
+    This reads via `Settings` (SafeConfig) so it respects ENV and search paths.
+    Example keys: `telegram`, `discord`, `telegram_bot`.
+    """
+    try:
+        providers = Settings.get_instance().Providers
+        return providers if isinstance(providers, dict) else {}
+    except Exception:
+        return {}

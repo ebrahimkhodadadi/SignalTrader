@@ -9,6 +9,8 @@ class DatabaseSchema:
     # Signals table schema
     SIGNAL_COLUMNS = {
         "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+        "provider": "TEXT NOT NULL DEFAULT 'telegram'",
+        "signal_type": "TEXT NOT NULL DEFAULT 'BUY'",
         "telegram_channel_title": "TEXT NOT NULL",
         "telegram_message_id": "INTEGER",
         "telegram_message_chatid": "INTEGER",
@@ -37,6 +39,8 @@ class SignalModel:
 
     def __init__(self, data: Dict):
         self.id = data.get('id')
+        self.provider = data.get('provider', 'telegram')
+        self.signal_type = data.get('signal_type', 'BUY')
         self.telegram_channel_title = data.get('telegram_channel_title')
         self.telegram_message_id = data.get('telegram_message_id')
         self.telegram_message_chatid = data.get('telegram_message_chatid')
@@ -52,21 +56,25 @@ class SignalModel:
         """Create SignalModel from database tuple"""
         return cls({
             "id": data_tuple[0],
-            "telegram_channel_title": data_tuple[1],
-            "telegram_message_id": data_tuple[2],
-            "telegram_message_chatid": data_tuple[3],
-            "open_price": data_tuple[4],
-            "second_price": data_tuple[5],
-            "stop_loss": data_tuple[6],
-            "tp_list": data_tuple[7],
-            "symbol": data_tuple[8],
-            "current_time": data_tuple[9]
+            "provider": data_tuple[1],
+            "signal_type": data_tuple[2],
+            "telegram_channel_title": data_tuple[3],
+            "telegram_message_id": data_tuple[4],
+            "telegram_message_chatid": data_tuple[5],
+            "open_price": data_tuple[6],
+            "second_price": data_tuple[7],
+            "stop_loss": data_tuple[8],
+            "tp_list": data_tuple[9],
+            "symbol": data_tuple[10],
+            "current_time": data_tuple[11]
         })
 
     def to_dict(self) -> Dict:
         """Convert to dictionary"""
         return {
             "id": self.id,
+            "provider": self.provider,
+            "signal_type": self.signal_type,
             "telegram_channel_title": self.telegram_channel_title,
             "telegram_message_id": self.telegram_message_id,
             "telegram_message_chatid": self.telegram_message_chatid,

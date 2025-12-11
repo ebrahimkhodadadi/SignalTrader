@@ -107,3 +107,29 @@ def update_stoploss(signal_id, stoploss):
 def update_takeProfits(signal_id, takeProfits):
     """Update take profits for signal"""
     _signal_repo.update_take_profits(signal_id, takeProfits)
+
+
+def get_active_signals():
+    """Get all active signals with linked positions"""
+    return _signal_repo.get_active_signals()
+
+
+def get_all_signals(limit=50):
+    """Get all signals with pagination"""
+    return _signal_repo.get_all_signals_paginated(limit=limit, offset=0)
+
+
+def get_active_positions_with_details():
+    """Get all active positions with signal details and P&L"""
+    return _position_repo.get_active_positions_with_signals()
+
+
+def get_positions_by_signal(signal_id):
+    """Get all positions for a specific signal"""
+    return _position_repo.get_positions_by_signal_id_with_details(signal_id)
+
+
+def get_signal(signal_id):
+    """Get signal by ID"""
+    signal = _signal_repo.get_signal_by_id(signal_id)
+    return signal.to_dict() if signal else None

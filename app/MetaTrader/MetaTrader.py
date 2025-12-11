@@ -79,8 +79,44 @@ class MetaTrader:
     def update_stop_loss(self, ticket, new_stop_loss):
         return self.position_manager.update_stop_loss(ticket, new_stop_loss)
 
-    def close_position(self, ticket):
+    def close_position(self, ticket, volume=None):
+        """Close position with optional custom volume"""
+        if volume is not None:
+            return self.position_manager.close_position(ticket, volume)
         return self.position_manager.close_position(ticket)
+
+    def update_position_sl(self, ticket, new_sl):
+        """Update position stop loss and return tuple (success, error_message)"""
+        result = self.update_stop_loss(ticket, new_sl)
+        # If the position_manager method is updated to return error messages, use them
+        # For now, just return the boolean
+        return result
+
+    def update_position_tp(self, ticket, new_tp):
+        """Update position take profit and return tuple (success, error_message)"""
+        return self.position_manager.update_take_profit(ticket, new_tp)
+
+    def get_position_by_ticket(self, ticket):
+        """Get position by ticket ID"""
+        return self.market_data.get_position(ticket)
+
+    def get_order_by_ticket(self, ticket):
+        """Get pending order by ticket ID"""
+        pos_or_order = self.market_data.get_position_or_order(ticket)
+        if pos_or_order and hasattr(pos_or_order, 'type'):
+            # Check if it's an order (not a position)
+            import MetaTrader5 as mt5
+            if pos_or_order.type not in [mt5.POSITION_TYPE_BUY, mt5.POSITION_TYPE_SELL]:
+                return pos_or_order
+        return None
+
+    def delete_order(self, ticket):
+        """Delete pending order"""
+        return self.position_manager.delete_order(ticket)
+
+    def get_account_info(self):
+        """Get account information"""
+        return self.connection.get_account_info() if hasattr(self.connection, 'get_account_info') else {}
 
     # Validation methods
     def validate(self, action, price, symbol, currentPrice=None, isSl=False, isSecondPrice=False):
@@ -114,8 +150,8 @@ class MetaTrader:
 
     # Static trading operations
     @staticmethod
-    def Trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment):
-        TradingOperations.trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment)
+    def Trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment, provider="telegram"):
+        TradingOperations.trade(message_username, message_id, message_chatid, actionType, symbol, openPrice, secondPrice, tp_list, sl, comment, provider)
 
     @staticmethod
     def RiskFreePositions(chat_id, message_id):

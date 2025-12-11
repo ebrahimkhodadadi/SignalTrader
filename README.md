@@ -46,6 +46,8 @@ If you're new to SignalTrader and just want to get started quickly:
 }
 ```
 
+⚠️ **Performance Warning**: Telegram notifications can significantly slow down the application. If you experience performance issues, leave the `Notification` section empty (`"token": ""` and `"chatId": ""`). The app will continue working normally without sending notifications.
+
 ### 3. Run the Application
 - Place all files (`.exe`, `settings.json`, `keywords.json`, `regex_patterns.json`) in the same folder
 - Double-click the `.exe` file to start
@@ -84,6 +86,7 @@ If you're new to SignalTrader and just want to get started quickly:
 ### Integration & Monitoring
 - **MetaTrader 5 Integration**: Full API integration for order execution and position monitoring
 - **Telegram Notifications**: Real-time notifications via Telegram bot
+- **Telegram Manager Bot**: Interactive bot interface to view live positions and manage trades directly from Telegram
 - **Comprehensive Logging**: Structured logging with timestamps and error tracking
 - **Database Storage**: SQLite-based storage for signals and position tracking
 
@@ -154,6 +157,25 @@ For advanced users, customize command keywords and regex patterns through JSON f
 4. Project root directory
 
 See [Configuration Guide](docs/Configuration.md) for detailed instructions on customizing these files.
+
+### ⚠️ Notifications Performance Warning
+
+**Telegram notifications can significantly impact application performance and responsiveness.** If you experience:
+- Slow signal parsing
+- Delayed trade execution
+- High CPU usage
+- Laggy telegram manager bot interface
+
+**Solution**: Disable notifications by leaving the notification settings empty in `settings.json`:
+
+```json
+"Notification": {
+  "token": "",
+  "chatId": ""
+}
+```
+
+The application will continue working normally without notifications. You can monitor the console logs instead for real-time updates.
 
 ## Usage
 
@@ -245,6 +267,7 @@ Detailed documentation is available in the `docs/` folder:
 - [Analyzer Documentation](docs/Analayzer.md) - Signal parsing details
 - [MetaTrader Integration](docs/MetaTrader.md) - MT5 API usage
 - [Telegram Integration](docs/Telegram.md) - Telegram API setup
+- [Telegram Manager Bot](docs/TelegramManagerBot.md) - Interactive trade management interface
 - [Release Guide](docs/Release.md) - Building executables
 
 ## Contributing

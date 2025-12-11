@@ -216,6 +216,7 @@ class PositionManager:
         """
         Updates stop loss for either an open position or a pending order.
         Automatically detects the type and applies the correct request.
+        Returns: (success, error_message)
         """
         # Try to find active position first
         position = mt5.positions_get(ticket=ticket)
@@ -224,13 +225,13 @@ class PositionManager:
             symbol_info = mt5.symbol_info(position.symbol)
             if not symbol_info:
                 logger.error(f"Symbol info not found for {position.symbol}")
-                return False
+                return False, "Symbol info not found"
 
             digits = symbol_info.digits
             new_stop_loss = round(new_stop_loss, digits)
 
             if position.sl == new_stop_loss:
-                return False  # Already at target SL
+                return False, "Already at target SL"
 
             logger.info(f"Updating stop loss for position {ticket} to {new_stop_loss}")
 
@@ -249,19 +250,19 @@ class PositionManager:
             order = mt5.orders_get(ticket=ticket)
             if not order or len(order) == 0:
                 logger.warning(f"Ticket {ticket} not found as position or order")
-                return False
+                return False, "Position/order not found"
 
             order = order[0]
             symbol_info = mt5.symbol_info(order.symbol)
             if not symbol_info:
                 logger.error(f"Symbol info not found for {order.symbol}")
-                return False
+                return False, "Symbol info not found"
 
             digits = symbol_info.digits
             new_stop_loss = round(new_stop_loss, digits)
 
             if order.sl == new_stop_loss:
-                return False  # Already at target SL
+                return False, "Already at target SL"
 
             logger.info(f"Updating stop loss for pending order {ticket} to {new_stop_loss}")
 
@@ -278,8 +279,106 @@ class PositionManager:
 
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            logger.error(f"Failed to update stop loss for ticket {ticket}: {result.comment}")
-            return False
+            error_msg = result.comment if result.comment else "Unknown error"
+            logger.error(f"Failed to update stop loss for ticket {ticket}: {error_msg}")
+            return False, error_msg
         else:
             logger.success(f"Stop loss updated successfully for ticket {ticket} to {new_stop_loss}")
-            return True
+            return True, None
+
+    def update_take_profit(self, ticket, new_take_profit):
+        """
+        Updates take profit for either an open position or a pending order.
+        Automatically detects the type and applies the correct request.
+        Returns: (success, error_message)
+        """
+        # Try to find active position first
+        position = mt5.positions_get(ticket=ticket)
+        if position and len(position) > 0:
+            position = position[0]
+            symbol_info = mt5.symbol_info(position.symbol)
+            if not symbol_info:
+                logger.error(f"Symbol info not found for {position.symbol}")
+                return False, "Symbol info not found"
+
+            digits = symbol_info.digits
+            new_take_profit = round(new_take_profit, digits)
+
+            if position.tp == new_take_profit:
+                return False, "Already at target TP"
+
+            logger.info(f"Updating take profit for position {ticket} to {new_take_profit}")
+
+            request = {
+                "action": mt5.TRADE_ACTION_SLTP,
+                "position": ticket,
+                "symbol": position.symbol,
+                "sl": position.sl,
+                "tp": float(new_take_profit),
+                "magic": position.magic,
+                "deviation": 10
+            }
+
+        else:
+            # If not a position, check for pending order
+            order = mt5.orders_get(ticket=ticket)
+            if not order or len(order) == 0:
+                logger.warning(f"Ticket {ticket} not found as position or order")
+                return False, "Position/order not found"
+
+            order = order[0]
+            symbol_info = mt5.symbol_info(order.symbol)
+            if not symbol_info:
+                logger.error(f"Symbol info not found for {order.symbol}")
+                return False, "Symbol info not found"
+
+            digits = symbol_info.digits
+            new_take_profit = round(new_take_profit, digits)
+
+            if order.tp == new_take_profit:
+                return False, "Already at target TP"
+
+            logger.info(f"Updating take profit for pending order {ticket} to {new_take_profit}")
+
+            request = {
+                "action": mt5.TRADE_ACTION_MODIFY,
+                "order": ticket,
+                "symbol": order.symbol,
+                "price": order.price_open,
+                "sl": order.sl,
+                "tp": float(new_take_profit),
+                "type_time": order.type_time,
+                "type_filling": order.type_filling
+            }
+
+        result = mt5.order_send(request)
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            error_msg = result.comment if result.comment else "Unknown error"
+            logger.error(f"Failed to update take profit for ticket {ticket}: {error_msg}")
+            return False, error_msg
+        else:
+            logger.success(f"Take profit updated successfully for ticket {ticket} to {new_take_profit}")
+            return True, None
+
+    def delete_order(self, ticket):
+        """Cancel/delete a pending order"""
+        order = mt5.orders_get(ticket=ticket)
+        if not order or len(order) == 0:
+            logger.warning(f"Order {ticket} not found")
+            return False
+
+        order = order[0]
+        request = {
+            "action": mt5.TRADE_ACTION_REMOVE,
+            "order": ticket,
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+
+        result = mt5.order_send(request)
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            logger.error(f"Failed to delete order {ticket}: {result.comment}")
+            return False
+
+        logger.success(f"Order {ticket} deleted successfully")
+        return True
