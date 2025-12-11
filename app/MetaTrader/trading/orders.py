@@ -101,7 +101,7 @@ class OrderManager:
                 "tp": takeProfit,
                 "type_filling": mt5.ORDER_FILLING_IOC,
                 # comment.replace("https://t.me/", ""),
-                # "comment": "TelegramTrader",
+                # "comment": "SignalTrader",
                 "deviation": deviation,
                 "magic": self.magic,
                 "type_time": mt5.ORDER_TIME_GTC,

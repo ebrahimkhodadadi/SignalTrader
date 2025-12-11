@@ -1,6 +1,6 @@
 # Telegram Integration
 
-This document covers how TelegramTrader integrates with Telegram for signal monitoring, message processing, and notification delivery.
+This document covers how SignalTrader integrates with Telegram for signal monitoring, message processing, and notification delivery.
 
 ## Overview
 

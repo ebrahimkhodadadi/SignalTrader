@@ -1,8 +1,8 @@
 """
-Telegram Client Module for TelegramTrader
+Telegram Client Module for SignalTrader
 
-This module provides a robust Telegram client implementation for monitoring trading signals
-from Telegram channels and handling various message events.
+This module provides a Telegram client implementation for monitoring trading signals
+from configured providers (Telegram) and handling various message events.
 
 Features:
     - Real-time message monitoring from configured channels

@@ -1,4 +1,4 @@
-"""Database models and schema definitions for TelegramTrader"""
+"""Database models and schema definitions for SignalTrader"""
 
 from typing import Dict
 

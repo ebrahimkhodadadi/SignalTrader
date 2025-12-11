@@ -1,5 +1,5 @@
 """
-Database module for TelegramTrader
+Database module for SignalTrader
 
 Provides database operations for signals and positions with both
 modern repository pattern and legacy compatibility.

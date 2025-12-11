@@ -1,4 +1,5 @@
-"""Logging configuration for TelegramTrader"""
+"""Logging configuration for SignalTrader"""
+"""Logging configuration for SignalTrader"""
 
 import sys
 import os

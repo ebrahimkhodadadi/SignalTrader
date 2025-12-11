@@ -27,7 +27,7 @@ jobs:
         pip install pyinstaller
 
     - name: Build EXE
-      run: python -m PyInstaller TelegramTrader.spec
+      run: python -m PyInstaller SignalTrader.spec
 
     - name: Upload EXE as Artifact
       uses: actions/upload-artifact@v4

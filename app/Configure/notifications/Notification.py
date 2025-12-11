@@ -1,4 +1,4 @@
-"""Telegram notification configuration for TelegramTrader"""
+"""Telegram notification configuration for SignalTrader"""
 
 from typing import Optional
 from notifiers import get_notifier
@@ -40,7 +40,7 @@ class NotificationManager:
             self._handler = NotificationHandler("telegram", defaults=params)
             logger.add(
                 self._handler,
-                format="🔔 **TelegramTrader Alert**\n"
+                format="🔔 **SignalTrader Alert**\n"
                        "🕐 `{time:YYYY-MM-DD HH:mm:ss}` | ⏰ `{extra[mt5_time]}`\n"
                        "📝 {message}",
                 level="INFO"  # Send info, warnings and above to Telegram
@@ -58,9 +58,9 @@ class NotificationManager:
         try:
             import Helper
             jalali_time = Helper.get_jalali_datetime()
-            return f"🤖 **TelegramTrader Started!**\n\n🕐 {jalali_time}\n\nBot is now monitoring for trading signals."
+            return f"🤖 **SignalTrader Started!**\n\n🕐 {jalali_time}\n\nBot is now monitoring for trading signals."
         except Exception:
-            return "🤖 **TelegramTrader Started!**\n\nBot is now active and monitoring for trading signals."
+            return "🤖 **SignalTrader Started!**\n\nBot is now active and monitoring for trading signals."
 
     def send_notification(self, message: str) -> bool:
         """Send a custom notification message

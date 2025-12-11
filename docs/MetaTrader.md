@@ -1,6 +1,6 @@
 # MetaTrader 5 Integration
 
-This document explains how TelegramTrader integrates with MetaTrader 5 (MT5) for automated trading execution, position management, and market data access.
+This document explains how SignalTrader integrates with MetaTrader 5 (MT5) for automated trading execution, position management, and market data access.
 
 ## Overview
 
@@ -179,7 +179,7 @@ Signals and positions are stored in SQLite:
 - Position queries: `mt5.positions_get()`
 - Symbol info: `mt5.symbol_info()`
 
-### TelegramTrader Extensions
+### SignalTrader Extensions
 - Price validation for specific symbols
 - Automatic order type determination
 - Risk-based lot size calculation

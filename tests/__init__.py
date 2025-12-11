@@ -1,4 +1,4 @@
-"""Test suite for TelegramTrader"""
+"""Test suite for SignalTrader"""
 
 import unittest
 import sys

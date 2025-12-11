@@ -10,7 +10,7 @@ from .repository.signal_repository import signal_repo as _signal_repo
 from .repository.position_repository import position_repo as _position_repo
 
 # Legacy global variables for backward compatibility
-db_path = "telegramtrader.db"
+db_path = "signaltrader.db"
 signal_columns = {
     "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
     "telegram_channel_title": "TEXT NOT NULL",

@@ -1,4 +1,4 @@
-"""Configuration management for TelegramTrader with safe property access"""
+"""Configuration management for SignalTrader with safe property access"""
 
 import os
 from typing import Any, Dict, Optional, List
@@ -67,22 +67,42 @@ class SafeConfig:
         except (AttributeError, KeyError, TypeError):
             return default
 
-    # Telegram properties
+    # Telegram properties (check new providers structure first, then legacy)
     @property
     def telegram_api_id(self) -> int:
-        return self._get_nested_value('Telegram', 'api_id') or self._defaults['telegram_api_id']
+        # Try new structure first (providers.telegram)
+        val = self._get_nested_value('providers', 'telegram', 'api_id')
+        if not val:
+            # Fall back to legacy structure
+            val = self._get_nested_value('Telegram', 'api_id')
+        return val or self._defaults['telegram_api_id']
 
     @property
     def telegram_api_hash(self) -> str:
-        return self._get_nested_value('Telegram', 'api_hash') or self._defaults['telegram_api_hash']
+        # Try new structure first (providers.telegram)
+        val = self._get_nested_value('providers', 'telegram', 'api_hash')
+        if not val:
+            # Fall back to legacy structure
+            val = self._get_nested_value('Telegram', 'api_hash')
+        return val or self._defaults['telegram_api_hash']
 
     @property
     def telegram_channels_whitelist(self) -> List[str]:
-        return self._get_nested_value('Telegram', 'channels', 'whiteList') or self._defaults['telegram_channels_whitelist']
+        # Try new structure first (providers.telegram.channels)
+        val = self._get_nested_value('providers', 'telegram', 'channels', 'whiteList')
+        if not val:
+            # Fall back to legacy structure
+            val = self._get_nested_value('Telegram', 'channels', 'whiteList')
+        return val or self._defaults['telegram_channels_whitelist']
 
     @property
     def telegram_channels_blacklist(self) -> List[str]:
-        return self._get_nested_value('Telegram', 'channels', 'blackList') or self._defaults['telegram_channels_blacklist']
+        # Try new structure first (providers.telegram.channels)
+        val = self._get_nested_value('providers', 'telegram', 'channels', 'blackList')
+        if not val:
+            # Fall back to legacy structure
+            val = self._get_nested_value('Telegram', 'channels', 'blackList')
+        return val or self._defaults['telegram_channels_blacklist']
 
     # Notification properties
     @property
@@ -176,13 +196,23 @@ class SafeConfig:
 
     # Legacy compatibility properties
     @property
+    def Providers(self):
+        """Access providers configuration (Telegram, Discord, etc.)"""
+        return self._get_nested_value('providers', {})
+
+    @property
     def Telegram(self):
-        """Legacy Telegram config access"""
+        """Telegram config access (from providers section)"""
         class TelegramConfig:
             def __init__(self, parent):
                 self._parent = parent
-                self.api_id = parent.telegram_api_id
-                self.api_hash = parent.telegram_api_hash
+                providers = parent._get_nested_value('providers', {})
+                telegram_config = providers.get('telegram', {}) if isinstance(providers, dict) else {}
+                if not telegram_config:
+                    telegram_config = parent._get_nested_value('Telegram', {})
+                
+                self.api_id = telegram_config.get('api_id') if isinstance(telegram_config, dict) else getattr(telegram_config, 'api_id', parent.telegram_api_id)
+                self.api_hash = telegram_config.get('api_hash') if isinstance(telegram_config, dict) else getattr(telegram_config, 'api_hash', parent.telegram_api_hash)
                 
             @property
             def channels(self):
@@ -240,6 +270,22 @@ class SafeConfig:
                 self.start = parent.timer_start
                 self.end = parent.timer_end
         return TimerConfig(self)
+
+    @property
+    def Discord(self):
+        """Discord provider config access (from providers section)"""
+        class DiscordConfig:
+            def __init__(self, parent):
+                self._parent = parent
+                providers = parent._get_nested_value('providers', {})
+                discord_config = providers.get('discord', {}) if isinstance(providers, dict) else {}
+                if not discord_config:
+                    discord_config = parent._get_nested_value('Discord', {})
+                
+                self.bot_token = discord_config.get('bot_token') if isinstance(discord_config, dict) else getattr(discord_config, 'bot_token', None)
+                self.channel_ids = (discord_config.get('channel_ids') if isinstance(discord_config, dict) else getattr(discord_config, 'channel_ids', [])) or []
+                self.mention_mode = (discord_config.get('mention_mode') if isinstance(discord_config, dict) else getattr(discord_config, 'mention_mode', False)) or False
+        return DiscordConfig(self)
 
 
 class SettingsManager:

@@ -1,6 +1,6 @@
 # Testing Guide
 
-This directory contains comprehensive tests for the TelegramTrader application, organized by test type and component.
+This directory contains comprehensive tests for the SignalTrader application, organized by test type and component.
 
 ## Test Structure
 
@@ -85,7 +85,7 @@ All tests inherit from `TestBase` which provides:
 Pre-configured mock objects for:
 - MT5 connections and responses
 - Telegram messages
-- Database records
+This directory contains comprehensive tests for the SignalTrader application, organized by test type and component.
 - Trading signals
 
 ## Writing New Tests

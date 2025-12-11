@@ -1,4 +1,4 @@
-"""Database repository modules for TelegramTrader"""
+"""Database repository modules for SignalTrader"""
 
 from .Repository import SQLiteRepository
 from .signal_repository import SignalRepository, signal_repo

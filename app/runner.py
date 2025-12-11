@@ -1,7 +1,7 @@
 """
-TelegramTrader Application Runner
+SignalTrader Application Runner
 
-This module serves as the main entry point for the TelegramTrader application.
+This module serves as the main entry point for the SignalTrader application.
 It orchestrates the startup sequence, initializes all components, and manages
 the main event loop for trading operations.
 
@@ -23,16 +23,15 @@ from Configure.settings.Settings import Settings
 from Configure import ConfigLogger, ConfigNotification
 from Database import DoMigrations
 from Helper import can_access_telegram
-from Telegram.Telegram import TelegramClientManager
 from MetaTrader import monitor_all_accounts
 
 
 class ApplicationRunner:
-    """Main application runner for TelegramTrader"""
+    """Main application runner for SignalTrader"""
 
     def __init__(self):
         self.settings = None
-        self.telegram_client = None
+        self.provider = None
         self.shutdown_event = asyncio.Event()
 
     async def run(self) -> NoReturn:
@@ -63,13 +62,13 @@ class ApplicationRunner:
     def _display_startup_banner(self) -> None:
         """Display application startup banner"""
         banner = """
-╔══════════════════════════════════════╗
-║           TelegramTrader              ║
-║     Automated Trading Bot            ║
-╚══════════════════════════════════════╝
+    ╔══════════════════════════════════════╗
+    ║           SignalTrader               ║
+    ║     Automated Trading Bot            ║
+    ╚══════════════════════════════════════╝
         """
         print(banner)
-        logger.info("Initializing TelegramTrader...")
+        logger.info("Initializing SignalTrader...")
 
     async def _initialize_application(self) -> None:
         """Initialize all application components in proper order"""
@@ -178,7 +177,7 @@ class ApplicationRunner:
         tasks = await self._create_service_tasks()
 
         # Start services concurrently
-        logger.success("All services started. TelegramTrader is now active.")
+        logger.success("All services started. SignalTrader is now active.")
         logger.info("Press Ctrl+C to stop")
 
         try:
@@ -198,15 +197,17 @@ class ApplicationRunner:
         mt_task = asyncio.create_task(monitor_all_accounts())
         tasks.append(mt_task)
 
-        # Telegram monitoring task
-        logger.info("Starting Telegram monitoring service...")
-        telegram_settings = self.settings.Telegram
-        self.telegram_client = TelegramClientManager(
-            telegram_settings.api_id,
-            telegram_settings.api_hash
-        )
-        telegram_task = asyncio.create_task(self.telegram_client.start_monitoring())
-        tasks.append(telegram_task)
+        # Provider monitoring tasks (Telegram, future providers)
+        logger.info("Starting provider monitoring services...")
+        from Providers.loader import get_providers
+
+        provider_instances = get_providers()
+
+        for prov in provider_instances:
+            try:
+                tasks.append(asyncio.create_task(prov.start_monitoring()))
+            except Exception as e:
+                logger.error(f"Failed to start provider {prov.name}: {e}")
 
         return tasks
 
@@ -215,10 +216,13 @@ class ApplicationRunner:
         logger.info("Initiating graceful shutdown...")
 
         try:
-            # Close Telegram client
-            if self.telegram_client:
-                logger.info("Closing Telegram client...")
-                # Client handles its own disconnection
+            # Close provider clients
+            if self.provider:
+                logger.info("Closing provider client...")
+                try:
+                    await self.provider.stop()
+                except Exception:
+                    logger.warning("Provider stop encountered an issue")
 
             logger.success("Application shutdown completed")
 

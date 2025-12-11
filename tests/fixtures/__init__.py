@@ -1,4 +1,4 @@
-"""Test fixtures and mock data for TelegramTrader tests"""
+"""Test fixtures and mock data for SignalTrader tests"""
 
 from .mock_data import *
 from .test_base import TestBase

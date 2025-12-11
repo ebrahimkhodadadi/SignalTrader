@@ -1,4 +1,4 @@
-"""Signal detection components for TelegramTrader"""
+"""Signal detection components for SignalTrader"""
 
 from .action_detector import ActionDetector
 from .price_extractor import PriceExtractor

@@ -8,7 +8,7 @@ from ..models import SignalModel
 class SignalRepository:
     """Repository for signal-related database operations"""
 
-    def __init__(self, db_path: str = "telegramtrader.db", enable_cache: bool = True):
+    def __init__(self, db_path: str = "signaltrader.db", enable_cache: bool = True):
         self.repository = SQLiteRepository(db_path, "Signals", enable_cache=enable_cache)
 
     def create_table(self) -> None:

@@ -1,6 +1,6 @@
 # Building Releases
 
-This guide explains how to build executable releases of TelegramTrader for distribution.
+This guide explains how to build executable releases of SignalTrader for distribution.
 
 ## Prerequisites
 
@@ -16,10 +16,10 @@ pip install pyinstaller
 
 ### Method 1: Using Existing Spec File
 
-If `TelegramTrader.spec` exists:
+If `SignalTrader.spec` exists:
 
 ```bash
-pyinstaller TelegramTrader.spec
+pyinstaller SignalTrader.spec
 ```
 
 ### Method 2: Creating New Build
@@ -31,7 +31,7 @@ For first-time builds or when spec file is missing:
 pyinstaller --onefile --console app/runner.py
 
 # With custom name and icon
-pyinstaller --onefile --console --name TelegramTrader --icon=icon.ico app/runner.py
+pyinstaller --onefile --console --name SignalTrader --icon=icon.ico app/runner.py
 ```
 
 ## Build Options Explained
@@ -47,10 +47,10 @@ pyinstaller --onefile --console --name TelegramTrader --icon=icon.ico app/runner
 
 ```bash
 # Windowed application (no console)
-pyinstaller --onefile --windowed --name TelegramTrader app/runner.py
+pyinstaller --onefile --windowed --name SignalTrader app/runner.py
 
 # Debug build with console
-pyinstaller --onefile --console --debug=all --name TelegramTrader app/runner.py
+pyinstaller --onefile --console --debug=all --name SignalTrader app/runner.py
 ```
 
 ## Output
@@ -59,7 +59,7 @@ Build artifacts are created in the `dist/` directory:
 
 ```
 dist/
-└── TelegramTrader.exe  # Your executable
+└── SignalTrader.exe  # Your executable
 ```
 
 ## Distribution
@@ -68,8 +68,8 @@ dist/
 
 1. **Create Release Package**
    ```
-   TelegramTrader/
-   ├── TelegramTrader.exe
+   SignalTrader/
+   ├── SignalTrader.exe
    ├── settings.json      # User must create this
    └── README.txt         # Basic usage instructions
    ```
@@ -150,10 +150,10 @@ pyinstaller --onefile --upx-dir=/path/to/upx app/runner.py
 
 ### Custom Spec File
 
-Create `TelegramTrader.spec` for advanced control:
+# Create `SignalTrader.spec` for advanced control:
 
 ```python
-# TelegramTrader.spec
+# SignalTrader.spec
 import PyInstaller.config
 PyInstaller.config.CONF['distpath'] = './dist'
 PyInstaller.config.CONF['workpath'] = './build'
@@ -183,7 +183,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='TelegramTrader',
+   name='SignalTrader',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -214,7 +214,7 @@ datas=[
 1. **Functionality Test**
    ```bash
    # Test executable with sample config
-   ./dist/TelegramTrader.exe
+   ./dist/SignalTrader.exe
    ```
 
 2. **Dependency Check**
@@ -260,11 +260,11 @@ __version__ = "1.0.0"
 
 # In runner.py
 import version
-print(f"TelegramTrader v{version.__version__}")
+print(f"SignalTrader v{version.__version__}")
 ```
 
 ### Release Naming
 ```
-TelegramTrader-v1.0.0-Windows.exe
-TelegramTrader-v1.0.0-Source.zip
+SignalTrader-v1.0.0-Windows.exe
+SignalTrader-v1.0.0-Source.zip
 ```

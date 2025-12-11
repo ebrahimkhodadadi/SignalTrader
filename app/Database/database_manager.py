@@ -9,7 +9,7 @@ from Configure.settings.Settings import Settings
 class DatabaseManager:
     """Manages database initialization and migrations"""
 
-    def __init__(self, db_path: str = "telegramtrader.db", config=None):
+    def __init__(self, db_path: str = "signaltrader.db", config=None):
         self.db_path = db_path
         self.config = config
 

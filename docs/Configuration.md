@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This guide explains how to customize TelegramTrader's behavior through configuration files.
+This guide explains how to customize SignalTrader's behavior through configuration files.
 
 ## 🌐 Language / زبان
 
@@ -9,7 +9,7 @@ This guide explains how to customize TelegramTrader's behavior through configura
 
 ## Overview
 
-TelegramTrader uses JSON configuration files to allow easy customization of:
+SignalTrader uses JSON configuration files to allow easy customization of:
 - Message command keywords
 - Price extraction regex patterns
 - Other user-configurable settings

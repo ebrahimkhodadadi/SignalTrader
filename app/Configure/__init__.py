@@ -1,4 +1,4 @@
-"""Configuration module for TelegramTrader
+"""Configuration module for SignalTrader
 
 Provides centralized configuration management including:
 - Settings loading and validation

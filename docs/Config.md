@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This guide explains how to configure TelegramTrader for your trading setup. The configuration is stored in a JSON file that defines all necessary parameters for Telegram integration, MetaTrader connection, and trading behavior.
+This guide explains how to configure SignalTrader for your trading setup. The configuration is stored in a JSON file that defines all necessary parameters for provider integration (Telegram, etc.), MetaTrader connection, and trading behavior.
 
 ## Quick Setup
 

@@ -1,7 +1,7 @@
 """
-Message Handler for TelegramTrader
+Message Handler for SignalTrader
 
-This module processes different types of Telegram messages and coordinates
+This module processes different types of messages and coordinates
 trading actions, signal updates, and position management.
 
 Features:

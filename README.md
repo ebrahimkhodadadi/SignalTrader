@@ -1,6 +1,6 @@
-# TelegramTrader
+# SignalTrader
 
-TelegramTrader is an automated trading bot that monitors Telegram channels for trading signals, parses them using advanced regex patterns, and executes trades on MetaTrader 5 terminals. It supports risk management, position monitoring, and customizable trading strategies.
+SignalTrader is an automated trading bot that monitors messaging providers for trading signals, parses them using advanced regex patterns, and executes trades on MetaTrader 5 terminals. It supports risk management, position monitoring, and customizable trading strategies.
 
 ## 🌐 Language / زبان
 
@@ -9,7 +9,7 @@ TelegramTrader is an automated trading bot that monitors Telegram channels for t
 
 ## 🚀 Quick Start for Beginners
 
-If you're new to TelegramTrader and just want to get started quickly:
+If you're new to SignalTrader and just want to get started quickly:
 
 ### 1. Download the Latest Release
 - Go to [GitHub Releases](https://github.com/ebrahimkhodadadi/TelegramTrader/releases)
@@ -100,10 +100,10 @@ If you're new to TelegramTrader and just want to get started quickly:
 ### Quick Start
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ebrahimkhodadadi/TelegramTrader.git
-   cd TelegramTrader
-   ```
+  ```bash
+  git clone https://github.com/ebrahimkhodadadi/TelegramTrader.git
+  cd SignalTrader
+  ```
 
 2. **Install dependencies**
    ```bash
@@ -127,7 +127,7 @@ If you're new to TelegramTrader and just want to get started quickly:
 
 ## Configuration
 
-TelegramTrader supports multiple configuration methods for maximum flexibility:
+SignalTrader supports multiple configuration methods for maximum flexibility:
 
 ### Main Settings
 Create a `settings.json` file with your trading parameters. See [Configuration Guide](docs/Config.md) for detailed instructions.
