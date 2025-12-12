@@ -163,7 +163,13 @@ class PriceExtractor:
                                  if tp.strip().isdigit() and '/' not in tp]
                         persian_tp_numbers.extend(numbers)
                     return list(dict.fromkeys(persian_tp_numbers))
-
+                
+                target_matches = re.findall(r'(?:تارگت|هدف)\s*([\d\-–—\s]+)', sentence)
+                if target_matches:
+                    for match in target_matches:
+                        nums = re.split(r'[-–—\s]+', match)
+                        tp_numbers.extend([float(n) for n in nums if n.strip().isdigit()])
+                        
             # Filter out invalid values
             if not tp_numbers or tp_numbers == [1.0]:
                 return None
