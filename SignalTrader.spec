@@ -54,10 +54,13 @@ all_hiddenimports = list(dict.fromkeys(all_hiddenimports))
 
 all_datas = metatrader_data + telegram_data + database_data + configure_data
 
+spec_dir = os.path.abspath(os.path.dirname(__file__))
+app_path = os.path.abspath(os.path.join(spec_dir, 'app'))
+
 a = Analysis(
-    ['app\\runner.py'],
-    # Ensure PyInstaller can import packages under the app/ directory and workspace root
-    pathex=[os.path.abspath('.'), os.path.abspath('app')],
+    [os.path.join('app', 'runner.py')],
+    # Ensure PyInstaller can import packages under the app/ directory (absolute path from spec location)
+    pathex=[spec_dir, app_path],
     binaries=[],
     datas=all_datas,
     hiddenimports=all_hiddenimports,
