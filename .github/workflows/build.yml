@@ -27,7 +27,8 @@ jobs:
         pip install pyinstaller
 
     - name: Build EXE
-      run: python -m PyInstaller SignalTrader.spec
+      run: |
+        pyinstaller --clean --noconfirm SignalTrader.spec
 
     - name: Upload EXE as Artifact
       uses: actions/upload-artifact@v4
@@ -43,6 +44,25 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # Get last tag
+    - name: Get latest tag
+      id: get_tag
+      run: |
+        tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        echo "TAG=$tag" >> $GITHUB_OUTPUT
+
+    # Bump patch version
+    - name: Bump version
+      id: bump
+      run: |
+        old=${{ steps.get_tag.outputs.TAG }}
+        IFS='.' read -ra parts <<< "${old#v}"
+        major=${parts[0]}
+        minor=${parts[1]}
+        patch=${parts[2]}
+        new="v$major.$minor.$((patch+1))"
+        echo "NEW_TAG=$new" >> $GITHUB_OUTPUT
+
     - name: Download Artifact
       uses: actions/download-artifact@v4
       with:
@@ -52,8 +72,8 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ github.run_number }}
-        name: Release v${{ github.run_number }}
+        tag_name: ${{ steps.bump.outputs.NEW_TAG }}
+        name: Release ${{ steps.bump.outputs.NEW_TAG }}
         files: |
           ./dist/*.exe
           ./config/keywords.json

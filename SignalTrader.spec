@@ -1,17 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+import os
 
 # Collect submodules and data files for all app packages
 metatrader_submodules = collect_submodules('MetaTrader')
-# Explicitly add trading submodules
+
+# Explicitly add all trading submodules
 trading_submodules = [
+    'MetaTrader.trading',
     'MetaTrader.trading.market_data',
     'MetaTrader.trading.orders',
     'MetaTrader.trading.positions',
     'MetaTrader.trading.validation',
     'MetaTrader.trading.trading',
     'MetaTrader.trading.utils',
+    'MetaTrader.connection',
+    'MetaTrader.connection.connection',
+    'MetaTrader.monitoring',
+    'MetaTrader.monitoring.monitoring',
 ]
 
 telegram_submodules = collect_submodules('Telegram')
@@ -35,7 +42,12 @@ all_hiddenimports = [
     'loguru',
     'sqlite3',
     'requests',
-] + metatrader_submodules + trading_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
+    'aiohttp',
+    'asyncio',
+] + trading_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
+
+# Remove duplicates while preserving order
+all_hiddenimports = list(dict.fromkeys(all_hiddenimports))
 
 all_datas = metatrader_data + telegram_data + database_data + configure_data
 
