@@ -4,6 +4,16 @@ from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 # Collect submodules and data files for all app packages
 metatrader_submodules = collect_submodules('MetaTrader')
+# Explicitly add trading submodules
+trading_submodules = [
+    'MetaTrader.trading.market_data',
+    'MetaTrader.trading.orders',
+    'MetaTrader.trading.positions',
+    'MetaTrader.trading.validation',
+    'MetaTrader.trading.trading',
+    'MetaTrader.trading.utils',
+]
+
 telegram_submodules = collect_submodules('Telegram')
 database_submodules = collect_submodules('Database')
 configure_submodules = collect_submodules('Configure')
@@ -25,7 +35,7 @@ all_hiddenimports = [
     'loguru',
     'sqlite3',
     'requests',
-] + metatrader_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
+] + metatrader_submodules + trading_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
 
 all_datas = metatrader_data + telegram_data + database_data + configure_data
 
