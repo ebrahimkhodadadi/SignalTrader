@@ -33,8 +33,6 @@ class ViewManager:
         try:
             from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
             
-            logger.info(f"User {user_id} requested open trade form")
-            
             # Set user state to awaiting trade input
             self.user_states[user_id] = {
                 "state": "awaiting_trade_input",
@@ -71,7 +69,6 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
                     parse_mode="Markdown",
                     reply_markup=ReplyKeyboardRemove()
                 )
-                logger.info(f"Trade form sent to user {user_id}")
 
             except AttributeError as e:
                 logger.error(f"Error accessing query.message: {e}")
@@ -315,7 +312,6 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
     async def show_signal_detail(self, query, user_id: int, signal_id: int) -> None:
         """Show signal details with message link and action buttons"""
         try:
-            logger.info(f"Showing signal detail for signal_id={signal_id}")
             STATE_VIEWING_SIGNAL = "viewing_signal"
             self.user_states[user_id] = {"state": STATE_VIEWING_SIGNAL, "context": {"signal_id": signal_id}}
             
@@ -324,7 +320,6 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
 
             signal_repo = db_manager.get_signal_repository()
             signal = signal_repo.get_signal_by_id(signal_id)
-            logger.info(f"Signal lookup result: {signal is not None}")
             if not signal:
                 await query.edit_message_text("❌ Signal not found", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="signals")]]))
                 return
@@ -347,51 +342,65 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
             else:
                 message_link = "No link available"
             
-            # Get tickets from positions linked to this signal
-            logger.info(f"About to fetch positions for signal_id={signal_id}")
+            # Get the last 2 positions for this signal, sorted by ID descending
             position_repo = db_manager.get_position_repository()
             db_positions = position_repo.get_positions_by_signal_id(signal_id)
-            logger.info(f"Fetched {len(db_positions)} positions for signal_id={signal_id}")
             
-            # Separate tickets by entry type (open vs second price) and check if position or order
+            # Sort by position_id descending and take last 2
+            db_positions_sorted = sorted(db_positions, key=lambda x: (x.position_id if hasattr(x, 'position_id') else x.get("position_id")), reverse=True)
+            
             open_price_tickets = []
             second_price_tickets = []
             has_positions = False
             has_orders = False
             
-            for pos in db_positions:
-                ticket = pos.position_id if hasattr(pos, 'position_id') else pos.get("position_id")
-                # Get MT5 position details to check entry price
-                mt5_pos = self.meta_trader.get_position_by_ticket(ticket)
-                mt5_order = None
-                if not mt5_pos:
-                    mt5_order = self.meta_trader.get_order_by_ticket(ticket)
+            # First position (most recent) = open price, second position = second price
+            for idx, db_pos in enumerate(db_positions_sorted[:2]):
+                ticket = db_pos.position_id if hasattr(db_pos, 'position_id') else db_pos.get("position_id")
                 
-                # Determine if it's a position or order
-                if mt5_pos:
+                # Check if exists in MT5
+                mt5_obj = self.meta_trader.get_position_by_ticket(ticket)
+                if not mt5_obj:
+                    mt5_obj = self.meta_trader.get_order_by_ticket(ticket)
+                
+                if not mt5_obj:
+                    logger.warning(f"Ticket {ticket}: Not found in MT5")
+                    continue
+                
+                # Determine if position or order
+                if self.meta_trader.get_position_by_ticket(ticket):
                     has_positions = True
-                    open_price_mt5 = mt5_pos.open_price if hasattr(mt5_pos, 'open_price') else None
                 else:
                     has_orders = True
-                    open_price_mt5 = mt5_order.price_open if hasattr(mt5_order, 'price_open') else None
                 
-                # Compare with signal prices to determine which entry type
-                if open_price_mt5 and open_price_mt5 == entry_price:
+                # First = open price, Second = second price
+                if idx == 0:
                     open_price_tickets.append(ticket)
-                elif second_price and open_price_mt5 and open_price_mt5 == second_price:
-                    second_price_tickets.append(ticket)
                 else:
-                    # If can't match, add to open price by default
-                    open_price_tickets.append(ticket)
+                    second_price_tickets.append(ticket)
             
-            open_tickets_text = " / ".join(str(t) for t in open_price_tickets) if open_price_tickets else "None"
-            second_tickets_text = " / ".join(str(t) for t in second_price_tickets) if second_price_tickets else "None"
             all_tickets_text = " / ".join(str(t) for t in (open_price_tickets + second_price_tickets)) if (open_price_tickets + second_price_tickets) else "None"
-            logger.info(f"Open price tickets: {open_tickets_text}, Second price tickets: {second_tickets_text}")
             
-            # Determine emoji based on type
-            open_price_emoji = "📈" if has_positions else "⏳"
-            second_price_emoji = "📈" if has_positions else "⏳"
+            # Determine emoji based on type and if position still exists in MT5
+            if open_price_tickets:
+                # Check if open price position still exists
+                open_ticket = int(open_price_tickets[0])
+                mt5_open = self.meta_trader.get_position_by_ticket(open_ticket)
+                if not mt5_open:
+                    mt5_open = self.meta_trader.get_order_by_ticket(open_ticket)
+                open_price_emoji = ("📈" if self.meta_trader.get_position_by_ticket(open_ticket) else "⏳") if mt5_open else "❌"
+            else:
+                open_price_emoji = "❌"
+            
+            if second_price_tickets:
+                # Check if second price position still exists
+                second_ticket = int(second_price_tickets[0])
+                mt5_second = self.meta_trader.get_position_by_ticket(second_ticket)
+                if not mt5_second:
+                    mt5_second = self.meta_trader.get_order_by_ticket(second_ticket)
+                second_price_emoji = ("📈" if self.meta_trader.get_position_by_ticket(second_ticket) else "⏳") if mt5_second else "❌"
+            else:
+                second_price_emoji = "❌"
 
             # Add signal type emoji
             type_emoji = "🟢" if signal_type == "BUY" else "🔴"
@@ -408,7 +417,6 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
 
 **Linked Positions:** {1 if position else 0}"""
 
-            logger.info(f"Building buttons for signal_id={signal_id}")
             buttons = [
                 [
                     InlineKeyboardButton("🔴 Close All", callback_data=f"close_{signal_id}_full"),
@@ -428,16 +436,11 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
                     InlineKeyboardButton(f"{second_price_emoji} Second Price ({second_price})", callback_data=f"manage_{signal_id}_second"),
                 ])
             buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="signals")])
-            logger.info(f"About to edit message for signal_id={signal_id}")
-            logger.info(f"Text length: {len(text)}, buttons count: {len(buttons)}")
-            logger.info(f"Message text preview: {text[:100]}...")
-            logger.info(f"Buttons: {[[[btn.text for btn in row] for row in buttons]]}")
             await query.edit_message_text(
                 text,
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
-            logger.info(f"Successfully showed signal detail for signal_id={signal_id}")
 
         except Exception as e:
             # If message is not modified (same content), just answer silently
@@ -451,7 +454,7 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
                     await query.answer(f"❌ Error: {str(e)}", show_alert=True)
 
     async def show_manage_signal_entries(self, query, user_id: int, signal_id: int, entry_type: str) -> None:
-        """Show positions/orders for a specific entry price (open or second) - similar to position detail"""
+        """Show positions/orders for a specific entry price (open or second)"""
         try:
             self.user_states[user_id] = {"state": "manage_entries", "context": {"signal_id": signal_id, "entry_type": entry_type}}
             
@@ -469,27 +472,55 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
                 await query.edit_message_text(f"❌ No positions found for this signal", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=f"signal_{signal_id}")]]))
                 return
             
-            # Get the first position for this entry type
-            first_ticket = db_positions[0].position_id if hasattr(db_positions[0], 'position_id') else db_positions[0].get("position_id")
-            position = self.meta_trader.get_position_by_ticket(first_ticket)
+            # Sort by position_id descending and take last 2
+            db_positions_sorted = sorted(db_positions, key=lambda x: (x.position_id if hasattr(x, 'position_id') else x.get("position_id")), reverse=True)
+            
+            # Get ticket based on entry_type: first (open) or second
+            ticket = None
+            if entry_type == "open" and len(db_positions_sorted) > 0:
+                ticket = db_positions_sorted[0].position_id if hasattr(db_positions_sorted[0], 'position_id') else db_positions_sorted[0].get("position_id")
+            elif entry_type == "second" and len(db_positions_sorted) > 1:
+                ticket = db_positions_sorted[1].position_id if hasattr(db_positions_sorted[1], 'position_id') else db_positions_sorted[1].get("position_id")
+            else:
+                await query.edit_message_text(
+                    f"❌ No {entry_type} price position found",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=f"signal_{signal_id}")]])
+                )
+                return
+            
+            # Try to get it from MT5 (could be position or order)
+            position = self.meta_trader.get_position_by_ticket(ticket)
+            if not position:
+                position = self.meta_trader.get_order_by_ticket(ticket)
             
             if not position:
-                await query.edit_message_text(f"❌ Position not found", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=f"signal_{signal_id}")]]))
+                await query.edit_message_text(
+                    f"❌ Position/Order #{ticket} not found in MT5 (may have been closed)",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data=f"signal_{signal_id}")]])
+                )
                 return
             
             # Display position details
             symbol = position.symbol if hasattr(position, 'symbol') else "N/A"
-            open_price = position.open_price if hasattr(position, 'open_price') else "N/A"
-            current_price = position.price if hasattr(position, 'price') else "N/A"
+            
+            # Get prices (different fields for positions vs orders)
+            if hasattr(position, 'open_price'):
+                open_price = position.open_price
+                current_price = position.price if hasattr(position, 'price') else "N/A"
+            else:
+                # It's an order
+                open_price = position.price_open if hasattr(position, 'price_open') else "N/A"
+                current_price = position.price_open if hasattr(position, 'price_open') else "N/A"
+            
             stop_loss = position.stop_loss if hasattr(position, 'stop_loss') else "N/A"
             take_profit = position.take_profit if hasattr(position, 'take_profit') else "N/A"
-            lots = position.volume if hasattr(position, 'volume') else 1
+            lots = position.volume if hasattr(position, 'volume') else (position.volume_current if hasattr(position, 'volume_current') else 1)
             pnl = position.profit if hasattr(position, 'profit') else 0
             pnl_emoji = "📈" if pnl >= 0 else "📉"
 
             text = f"""📍 **Position**
 
-**Ticket:** #{first_ticket}
+**Ticket:** #{ticket}
 **Symbol:** {symbol}
 **Open:** {open_price} | **Current:** {current_price}
 **SL:** {stop_loss} | **TP:** {take_profit}
@@ -499,16 +530,16 @@ EURUSD BUY 1.0850 1.0855 1.0870,1.0885,1.0900 1.0830 Manual trade entry
 
             buttons = [
                 [
-                    InlineKeyboardButton("🔴 Close Full", callback_data=f"close_{first_ticket}_full"),
-                    InlineKeyboardButton("🟡 Close Half", callback_data=f"close_{first_ticket}_half"),
+                    InlineKeyboardButton("🔴 Close Full", callback_data=f"close_{ticket}_full"),
+                    InlineKeyboardButton("🟡 Close Half", callback_data=f"close_{ticket}_half"),
                 ],
                 [
-                    InlineKeyboardButton("📉 Close Custom", callback_data=f"close_{first_ticket}_lot"),
-                    InlineKeyboardButton("🟢 Risk Free", callback_data=f"close_{first_ticket}_risk_free"),
+                    InlineKeyboardButton("📉 Close Custom", callback_data=f"close_{ticket}_lot"),
+                    InlineKeyboardButton("🟢 Risk Free", callback_data=f"close_{ticket}_risk_free"),
                 ],
                 [
-                    InlineKeyboardButton("⬆️ Update SL", callback_data=f"update_{first_ticket}_sl"),
-                    InlineKeyboardButton("⬆️ Update TP", callback_data=f"update_{first_ticket}_tp"),
+                    InlineKeyboardButton("⬆️ Update SL", callback_data=f"update_{ticket}_sl"),
+                    InlineKeyboardButton("⬆️ Update TP", callback_data=f"update_{ticket}_tp"),
                 ],
             ]
             
