@@ -29,12 +29,14 @@ This guide explains how to configure SignalTrader for your trading setup. The co
 
 ```json
 {
-  "Telegram": {
-    "api_id": 12345678,
-    "api_hash": "abcdef1234567890abcdef1234567890",
-    "channels": {
-      "whiteList": ["trading_signals_channel", "forex_signals"],
-      "blackList": ["spam_channel", "unreliable_signals"]
+  "providers": {
+    "telegram": {
+      "api_id": 12345678,
+      "api_hash": "abcdef1234567890abcdef1234567890",
+      "channels": {
+        "whiteList": ["trading_signals_channel", "forex_signals"],
+        "blackList": ["spam_channel", "unreliable_signals"]
+      }
     }
   },
   "Notification": {
@@ -72,7 +74,10 @@ This guide explains how to configure SignalTrader for your trading setup. The co
 
 ## Configuration Sections
 
-### Telegram Settings
+### Provider Configuration
+All providers are configured under the `providers` section. See [PROVIDERS.md](./PROVIDERS.md) for complete provider documentation.
+
+### Telegram Provider Settings (under `providers.telegram`)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -85,6 +90,22 @@ This guide explains how to configure SignalTrader for your trading setup. The co
 - If `whiteList` is not empty, only messages from whitelisted channels are processed
 - `blackList` always takes precedence (blocked channels are ignored)
 - Channel usernames should not include the @ symbol
+
+**Example:**
+```json
+{
+  "providers": {
+    "telegram": {
+      "api_id": 12345678,
+      "api_hash": "your_api_hash",
+      "channels": {
+        "whiteList": ["trading_signals", "forex_tips"],
+        "blackList": []
+      }
+    }
+  }
+}
+```
 
 ### Notification Settings
 
@@ -194,10 +215,14 @@ TELEGRAM_API_HASH=your_api_hash
 Then reference in settings.json:
 ```json
 {
+  "providers": {
+    "telegram": {
+      "api_hash": "$TELEGRAM_API_HASH"
+    }
+  },
   "MetaTrader": {
     "password": "$MT5_PASSWORD"
   },
-  "Telegram": {
     "api_hash": "$TELEGRAM_API_HASH"
   }
 }

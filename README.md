@@ -31,6 +31,11 @@ If you're new to SignalTrader and just want to get started quickly:
         "whiteList": ["@your_signal_channel"],
         "blackList": []
       }
+    },
+    "telegram_bot": {
+      "enabled": true,
+      "bot_token": "YOUR_BOT_TOKEN_FROM_BOTFATHER",
+      "manager_chat_ids": [123456789]
     }
   },
   "MetaTrader": {

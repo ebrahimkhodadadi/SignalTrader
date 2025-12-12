@@ -3,6 +3,10 @@ Configuration loader for JSON-based settings
 
 This module loads configuration from JSON files and provides easy access
 to customizable keywords and regex patterns.
+
+Note: Provider configurations (Telegram, Discord, etc.) are loaded by the
+Providers module from the "providers" section in settings.json, not here.
+This loader focuses on application-specific configs like keywords and regex.
 """
 
 from typing import Dict, List, Any, Union, Optional

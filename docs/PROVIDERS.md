@@ -1,11 +1,11 @@
 ````markdown
 # Provider Configuration Guide
 
-This file shows how to extend SignalTrader with additional providers beyond Telegram.
+This file shows how to configure and extend SignalTrader with multiple providers.
 
 ## Unified Provider Structure
 
-SignalTrader uses a unified `providers` section in `settings.json` for all provider configurations:
+All provider configurations are centralized in the `providers` section of `settings.json`. This unified approach allows easy management of multiple simultaneous providers:
 
 ```json
 {
