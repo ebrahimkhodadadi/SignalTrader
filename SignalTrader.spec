@@ -44,7 +44,10 @@ all_hiddenimports = [
     'requests',
     'aiohttp',
     'asyncio',
-] + trading_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
+    # Ensure PyInstaller also traverses all submodules under MetaTrader.trading
+    # in case new modules are added.
+    
+] + collect_submodules('MetaTrader.trading') + trading_submodules + telegram_submodules + database_submodules + configure_submodules + providers_submodules + analayzer_submodules
 
 # Remove duplicates while preserving order
 all_hiddenimports = list(dict.fromkeys(all_hiddenimports))
@@ -53,8 +56,8 @@ all_datas = metatrader_data + telegram_data + database_data + configure_data
 
 a = Analysis(
     ['app\\runner.py'],
-    # Ensure PyInstaller can import packages under the app/ directory
-    pathex=['app'],
+    # Ensure PyInstaller can import packages under the app/ directory and workspace root
+    pathex=[os.path.abspath('.'), os.path.abspath('app')],
     binaries=[],
     datas=all_datas,
     hiddenimports=all_hiddenimports,
