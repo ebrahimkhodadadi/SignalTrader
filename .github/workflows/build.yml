@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # ensure tags and full history for versioning
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -43,11 +45,14 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # fetch all tags for git describe
 
     # Get last tag
     - name: Get latest tag
       id: get_tag
       run: |
+        git fetch --tags || true
         tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
         echo "TAG=$tag" >> $GITHUB_OUTPUT
 
