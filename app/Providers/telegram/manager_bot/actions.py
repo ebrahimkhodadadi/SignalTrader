@@ -120,23 +120,21 @@ class ActionManager:
                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="positions")]])
                     )
             elif close_type == "risk_free":
-                # Save profit (set risk-free by closing some lots)
+                # Set risk-free position using signal_id
                 await query.answer("Setting risk-free...", show_alert=False)
                 if self.meta_trader:
                     await query.edit_message_text("⏳ Setting risk-free...\n\n🔄 Please wait...")
                     try:
-                        result = self.meta_trader.save_profit_position(identifier, 0)
-                        if result:
+                        signal_id = self.user_states[user_id].get("context", {}).get("signal_id")
+                        if signal_id:
+                            self.meta_trader.RiskFreeSignal(signal_id)
                             await query.edit_message_text(
-                                "✅ Position set to risk-free (first TP level)",
+                                "✅ Position set to risk-free",
                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="positions")]])
                             )
-                            logger.info(f"Successfully set risk-free for position {identifier}")
                         else:
-                            error_msg = "Failed to set risk-free - check logs for details (may be: invalid profit percentage, position not found, or minimal lot size)"
-                            logger.error(f"Failed to set risk-free for position {identifier}: {error_msg}")
                             await query.edit_message_text(
-                                f"❌ {error_msg}",
+                                "❌ Signal ID not found",
                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="positions")]])
                             )
                     except Exception as e:

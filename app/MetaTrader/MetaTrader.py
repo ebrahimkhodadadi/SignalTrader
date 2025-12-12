@@ -158,6 +158,10 @@ class MetaTrader:
         TradingOperations.risk_free_positions(chat_id, message_id)
 
     @staticmethod
+    def RiskFreeSignal(signal_id):
+        TradingOperations.risk_free_signal(signal_id)
+
+    @staticmethod
     def Update_last_signal(chat_id, stop_loss):
         TradingOperations.update_last_signal(chat_id, stop_loss)
 

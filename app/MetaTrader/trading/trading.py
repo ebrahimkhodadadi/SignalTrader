@@ -191,6 +191,83 @@ class TradingOperations:
                 )
 
     @staticmethod
+    def _process_position_for_risk_free(mt, mtAccount, position, entry_price):
+        """Process a single position for risk-free operation"""
+        ticket = position.ticket
+        
+        logger.debug(f"Moving SL to entry price {entry_price} for position {ticket}")
+
+        # Update stop loss
+        sl_result = mt.update_stop_loss(ticket, entry_price)
+        if sl_result:
+            # Close half position only if not in high risk mode
+            if mtAccount.HighRisk:
+                logger.debug(f"Closing half position {ticket} for profit protection")
+                # Close half position
+                mt.close_half_position(ticket)
+            return True
+        else:
+            logger.warning(f"Failed to update stop loss for position {ticket}")
+            return False
+
+    @staticmethod
+    def _get_signal_entry_price(signal):
+        """Get entry price from signal"""
+        return signal.open_price if hasattr(signal, 'open_price') else signal.get("open_price")
+
+    @staticmethod
+    def _process_positions_risk_free(mt, mtAccount, relevant_positions, signal_data_cache, position_data_cache):
+        """Process multiple positions for risk-free operation using threading"""
+        import concurrent.futures
+        
+        def process_single_position(position):
+            """Process a single position for risk-free operation"""
+            ticket = position.ticket
+
+            # Get cached signal data
+            signal = signal_data_cache.get(ticket)
+            if not signal:
+                logger.error(f"Signal data not found for position {ticket}")
+                return False
+
+            # Determine entry price
+            entry_price = signal["open_price"]
+
+            # Check if we have position data and get actual entry price
+            signal_id = signal["id"]
+            position_data = position_data_cache.get(signal_id)
+            if position_data is not None:
+                # Get current position data from MT5
+                current_pos = mt.get_position_or_order(ticket_id=position_data["position_id"])
+                if current_pos is not None:
+                    entry_price = current_pos.price_open
+
+            return TradingOperations._process_position_for_risk_free(mt, mtAccount, position, entry_price)
+
+        # Use ThreadPoolExecutor for parallel MT5 operations
+        successful_operations = 0
+        max_workers = min(len(relevant_positions), 5)  # Limit concurrent operations
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_position = {
+                executor.submit(process_single_position, position): position
+                for position in relevant_positions
+            }
+
+            # Collect results
+            for future in concurrent.futures.as_completed(future_to_position):
+                position = future_to_position[future]
+                try:
+                    result = future.result()
+                    if result:
+                        successful_operations += 1
+                except Exception as e:
+                    logger.error(f"Error processing position {position.ticket}: {e}")
+
+        return successful_operations
+
+    @staticmethod
     def risk_free_positions(chat_id, message_id):
         """Move stop loss to entry price for risk-free positions - Optimized for performance"""
         import concurrent.futures
@@ -244,66 +321,64 @@ class TradingOperations:
                             signal["id"], first=True)
                         position_data_cache[signal["id"]] = position_data
 
-        # Process positions with parallel MT5 operations
-        def process_single_position(position):
-            """Process a single position for risk-free operation"""
-            ticket = position.ticket
-
-            # Get cached signal data
-            signal = signal_data_cache.get(ticket)
-            if not signal:
-                logger.error(f"Signal data not found for position {ticket}")
-                return False
-
-            # Determine entry price
-            entry_price = signal["open_price"]
-
-            # Check if we have position data and get actual entry price
-            signal_id = signal["id"]
-            position_data = position_data_cache.get(signal_id)
-            if position_data is not None:
-                # Get current position data from MT5
-                current_pos = mt.get_position_or_order(ticket_id=position_data["position_id"])
-                if current_pos is not None:
-                    entry_price = current_pos.price_open
-
-            logger.debug(f"Moving SL to entry price {entry_price} for position {ticket}")
-
-            # Update stop loss
-            sl_result = mt.update_stop_loss(ticket, entry_price)
-            if sl_result:
-                # Close half position only if not in high risk mode
-                if mtAccount.HighRisk:
-                    logger.debug(f"Closing half position {ticket} for profit protection")
-                    # Close half position
-                    mt.close_half_position(ticket)
-                return True
-            else:
-                logger.warning(f"Failed to update stop loss for position {ticket}")
-                return False
-
-        # Use ThreadPoolExecutor for parallel MT5 operations
-        successful_operations = 0
-        max_workers = min(len(relevant_positions), 5)  # Limit concurrent operations
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_position = {
-                executor.submit(process_single_position, position): position
-                for position in relevant_positions
-            }
-
-            # Collect results
-            for future in concurrent.futures.as_completed(future_to_position):
-                position = future_to_position[future]
-                try:
-                    result = future.result()
-                    if result:
-                        successful_operations += 1
-                except Exception as e:
-                    logger.error(f"Error processing position {position.ticket}: {e}")
+        # Process positions
+        successful_operations = TradingOperations._process_positions_risk_free(
+            mt, mtAccount, relevant_positions, signal_data_cache, position_data_cache
+        )
 
         logger.success(f"Risk-free operation completed: {successful_operations}/{len(relevant_positions)} positions processed successfully")
+
+    @staticmethod
+    def risk_free_signal(signal_id):
+        """Move stop loss to entry price for all positions of a specific signal"""
+        from Database.database_manager import db_manager
+        
+        logger.debug(f"Applying risk-free strategy for signal {signal_id}")
+
+        mtAccount = TradingOperations._get_mt_account_config()
+        mt = TradingOperations._create_metatrader_instance(mtAccount)
+
+        if not mt.Login():
+            logger.error("Failed to login for risk-free operation")
+            return
+
+        # Get all positions for this signal from database
+        position_repo = db_manager.get_position_repository()
+        db_positions = position_repo.get_positions_by_signal_id(signal_id)
+
+        if not db_positions:
+            logger.warning(f"No positions found for signal {signal_id}")
+            return
+
+        # Get signal details
+        signal_repo = db_manager.get_signal_repository()
+        signal = signal_repo.get_signal_by_id(signal_id)
+        
+        if not signal:
+            logger.warning(f"Signal {signal_id} not found")
+            return
+
+        entry_price = TradingOperations._get_signal_entry_price(signal)
+        
+        # Get all open positions at once
+        all_open_positions = mt.get_open_positions()
+        
+        successful_operations = 0
+        
+        for db_pos in db_positions:
+            ticket = db_pos.position_id if hasattr(db_pos, 'position_id') else db_pos.get("position_id")
+            
+            # Find position in open positions
+            position = next((p for p in all_open_positions if p.ticket == ticket), None)
+            if not position:
+                logger.warning(f"Position {ticket} not found in MT5")
+                continue
+            
+            # Process this position
+            if TradingOperations._process_position_for_risk_free(mt, mtAccount, position, entry_price):
+                successful_operations += 1
+
+        logger.success(f"Risk-free operation completed: {successful_operations}/{len(db_positions)} positions processed successfully")
 
     @staticmethod
     def update_last_signal(chat_id, stop_loss):
