@@ -177,7 +177,8 @@ class ActionManager:
                 # Create rows of 4 buttons each
                 row = []
                 while current >= 0.01:
-                    row.append(InlineKeyboardButton(str(current), callback_data=f"close_lot_{identifier}_{current}"))
+                    # Use dash instead of underscore for lot size to avoid split() issues with decimals
+                    row.append(InlineKeyboardButton(str(current), callback_data=f"close_lot_{identifier}-{current}"))
                     if len(row) == 4:
                         lot_buttons.append(row)
                         row = []
@@ -303,7 +304,7 @@ class ActionManager:
             if self.meta_trader:
                 await query.edit_message_text(f"⏳ Closing {lot_size} lots...\n\n🔄 Please wait...")
                 try:
-                    result = self.meta_trader.close_position(identifier, volume=lot_size)
+                    result = self.meta_trader.close_custom_lot(identifier, lot_size)
                     if result:
                         logger.info(f"Successfully closed {lot_size} lots for position {identifier}")
                         await query.edit_message_text(

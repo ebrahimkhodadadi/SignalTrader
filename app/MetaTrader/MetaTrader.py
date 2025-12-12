@@ -85,6 +85,10 @@ class MetaTrader:
             return self.position_manager.close_position(ticket, volume)
         return self.position_manager.close_position(ticket)
 
+    def close_custom_lot(self, ticket, lot_size):
+        """Close a custom volume from a position"""
+        return self.position_manager.close_custom_lot(ticket, lot_size)
+
     def update_position_sl(self, ticket, new_sl):
         """Update position stop loss and return tuple (success, error_message)"""
         result = self.update_stop_loss(ticket, new_sl)

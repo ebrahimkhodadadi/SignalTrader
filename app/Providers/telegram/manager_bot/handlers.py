@@ -72,7 +72,24 @@ class HandlerManager:
             
             logger.info(f"Parsed callback - action: {action}, parts: {parts}")
 
-            if action == "signal":
+            # Check for close_lot BEFORE close to avoid parsing conflict
+            # close_lot has format: close_lot_{identifier}-{lot_size}
+            if len(parts) >= 3 and parts[0] == "close" and parts[1] == "lot":
+                identifier_lot = parts[2]
+                if '-' in identifier_lot:
+                    identifier_str, lot_str = identifier_lot.split('-', 1)
+                    try:
+                        identifier = int(identifier_str)
+                        lot_size = float(lot_str)
+                        logger.info(f"Close lot callback: identifier={identifier}, lot_size={lot_size}")
+                        await self.actions.handle_close_custom_lot(query, user_id, identifier, lot_size)
+                    except (ValueError, IndexError) as e:
+                        logger.error(f"Invalid close_lot format: {callback_data}, error: {e}")
+                        await query.answer("Invalid lot format", show_alert=True)
+                else:
+                    logger.error(f"Invalid close_lot format (no dash): {callback_data}")
+                    await query.answer("Invalid lot format", show_alert=True)
+            elif action == "signal":
                 signal_id = int(parts[1])
                 await self.views.show_signal_detail(query, user_id, signal_id)
             elif action == "position":
@@ -82,11 +99,6 @@ class HandlerManager:
                 identifier = int(parts[1])
                 close_type = "_".join(parts[2:])
                 await self.actions.handle_close_action(query, user_id, identifier, close_type)
-            elif action == "close_lot":
-                identifier = int(parts[1])
-                lot_size = float(parts[2])
-                logger.info(f"Close lot callback: identifier={identifier}, lot_size={lot_size}")
-                await self.actions.handle_close_custom_lot(query, user_id, identifier, lot_size)
             elif action == "update":
                 identifier = int(parts[1])
                 update_type = "_".join(parts[2:])

@@ -126,6 +126,58 @@ class PositionManager:
         # else:
         #     self.close_position(ticket)
 
+    def close_custom_lot(self, ticket, lot_size):
+        """Close a custom volume from a position"""
+        position = self.market_data.get_open_positions(ticket)
+        if position is None:
+            logger.error(f"Position {ticket} not found")
+            return False
+
+        # Validate lot size
+        if lot_size <= 0 or lot_size > position.volume:
+            logger.error(f"Invalid lot size {lot_size} for position {ticket} (max: {position.volume})")
+            return False
+
+        try:
+            # Determine close direction based on position type
+            if position.type == mt5.POSITION_TYPE_BUY:
+                order_type = mt5.ORDER_TYPE_SELL
+                close_price = mt5.symbol_info_tick(position.symbol).bid
+            else:  # SELL position
+                order_type = mt5.ORDER_TYPE_BUY
+                close_price = mt5.symbol_info_tick(position.symbol).ask
+
+            if close_price is None:
+                logger.error(f"Failed to get close price for symbol {position.symbol}")
+                return False
+
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": position.symbol,
+                "volume": float(lot_size),
+                "type": order_type,
+                "position": position.ticket,
+                "price": close_price,
+                "deviation": 10,
+                "magic": self.magic,
+                "comment": f"Close custom lot {lot_size}",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
+
+            result = mt5.order_send(request)
+
+            if result.retcode != mt5.TRADE_RETCODE_DONE:
+                logger.error(f"Failed to close {lot_size} lots for position {ticket}: {result.comment}")
+                return False
+            else:
+                logger.success(f"Successfully closed {lot_size} lots from position {ticket} ({position.symbol})")
+                return True
+
+        except Exception as e:
+            logger.error(f"Exception during custom lot close for position {ticket}: {str(e)}")
+            return False
+
     def save_profit_position(self, ticket, index, save_profits=None, close_positions=True):
         """Save profit of the position volume based on profit-taking strategy"""
 
