@@ -40,8 +40,9 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    optimize=0,
+    optimize=1,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -54,13 +55,31 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    icon='logo.ico',
+
+    # IMPORTANT: Do NOT use UPX → reduces antivirus false positives
+    upx=False,
     upx_exclude=[],
+
     runtime_tmpdir=None,
+
+    # Keep console -> your app seems CLI-based
     console=True,
+
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name='SignalTrader'
 )
