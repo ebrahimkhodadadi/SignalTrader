@@ -11,6 +11,7 @@ dist/*
 *.pyc
 *.zip
 *.rar
+*.exe
 
 # Configuration files (keep customizable config files, ignore settings)
 config/development.json
