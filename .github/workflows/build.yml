@@ -30,7 +30,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller --clean --noconfirm SignalTrader.spec --paths app
+        pyinstaller --clean --noconfirm SignalTrader.spec
 
     - name: Upload EXE as Artifact
       uses: actions/upload-artifact@v4
