@@ -65,7 +65,8 @@ a = Analysis(
     binaries=[],
     datas=all_datas,
     hiddenimports=all_hiddenimports,
-    hookspath=[],
+    # Include custom hooks to force MetaTrader submodules inclusion in CI
+    hookspath=['hooks'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
