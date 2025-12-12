@@ -53,7 +53,8 @@ all_datas = metatrader_data + telegram_data + database_data + configure_data
 
 a = Analysis(
     ['app\\runner.py'],
-    pathex=[],
+    # Ensure PyInstaller can import packages under the app/ directory
+    pathex=['app'],
     binaries=[],
     datas=all_datas,
     hiddenimports=all_hiddenimports,
