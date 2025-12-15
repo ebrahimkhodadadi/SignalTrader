@@ -266,9 +266,8 @@ class PositionManager:
 
     def update_stop_loss(self, ticket, new_stop_loss):
         """
-        Updates stop loss for either an open position or a pending order.
-        Automatically detects the type and applies the correct request.
-        Returns: (success, error_message)
+        Update stop loss for either an open position or a pending order.
+        Returns True only when the SL is actually changed and MT5 confirms it.
         """
         # Try to find active position first
         position = mt5.positions_get(ticket=ticket)
@@ -277,13 +276,13 @@ class PositionManager:
             symbol_info = mt5.symbol_info(position.symbol)
             if not symbol_info:
                 logger.error(f"Symbol info not found for {position.symbol}")
-                return False, "Symbol info not found"
+                return False
 
             digits = symbol_info.digits
             new_stop_loss = round(new_stop_loss, digits)
 
             if position.sl == new_stop_loss:
-                return False, "Already at target SL"
+                return False
 
             logger.info(f"Updating stop loss for position {ticket} to {new_stop_loss}")
 
@@ -302,19 +301,19 @@ class PositionManager:
             order = mt5.orders_get(ticket=ticket)
             if not order or len(order) == 0:
                 logger.warning(f"Ticket {ticket} not found as position or order")
-                return False, "Position/order not found"
+                return False
 
             order = order[0]
             symbol_info = mt5.symbol_info(order.symbol)
             if not symbol_info:
                 logger.error(f"Symbol info not found for {order.symbol}")
-                return False, "Symbol info not found"
+                return False
 
             digits = symbol_info.digits
             new_stop_loss = round(new_stop_loss, digits)
 
             if order.sl == new_stop_loss:
-                return False, "Already at target SL"
+                return False
 
             logger.info(f"Updating stop loss for pending order {ticket} to {new_stop_loss}")
 
@@ -333,10 +332,10 @@ class PositionManager:
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             error_msg = result.comment if result.comment else "Unknown error"
             logger.error(f"Failed to update stop loss for ticket {ticket}: {error_msg}")
-            return False, error_msg
-        else:
-            logger.success(f"Stop loss updated successfully for ticket {ticket} to {new_stop_loss}")
-            return True, None
+            return False
+
+        logger.success(f"Stop loss updated successfully for ticket {ticket} to {new_stop_loss}")
+        return True
 
     def update_take_profit(self, ticket, new_take_profit):
         """
