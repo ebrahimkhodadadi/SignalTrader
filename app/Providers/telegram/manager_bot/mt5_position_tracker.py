@@ -49,7 +49,7 @@ def extract_position_id_from_trade_result(result) -> Optional[int]:
     # result.order contains the position_id for market orders
     position_id = result.order
 
-    logger.info(f"[MT5_TRACKER] Extracted position_id: {position_id}")
+    logger.debug(f"[MT5_TRACKER] Extracted position_id: {position_id}")
     logger.debug(f"[MT5_TRACKER] Trade result details - order: {result.order}, deal: {result.deal}, volume: {result.volume}")
 
     # IMPORTANT: result.deal is the DEAL TICKET, not the position ID
@@ -77,7 +77,7 @@ def verify_position_exists(position_id: int) -> Optional[Dict[str, Any]]:
 
         if positions and len(positions) > 0:
             pos = positions[0]
-            logger.info(f"[MT5_TRACKER] Position {position_id} is OPEN - Symbol: {pos.symbol}, Profit: {pos.profit}")
+            logger.debug(f"[MT5_TRACKER] Position {position_id} is OPEN - Symbol: {pos.symbol}, Profit: {pos.profit}")
             return {
                 'position_id': pos.ticket,
                 'symbol': pos.symbol,
@@ -91,7 +91,7 @@ def verify_position_exists(position_id: int) -> Optional[Dict[str, Any]]:
                 'time': pos.time
             }
         else:
-            logger.info(f"[MT5_TRACKER] Position {position_id} is CLOSED or not found")
+            logger.debug(f"[MT5_TRACKER] Position {position_id} is CLOSED or not found")
             return None
 
     except Exception as e:
@@ -121,7 +121,7 @@ def get_closed_position_from_history(position_id: int, days_back: int = 30) -> O
         to_date = datetime.now()
         from_date = to_date - timedelta(days=days_back)
 
-        logger.info(f"[MT5_TRACKER] Searching history for position_id {position_id} from {from_date} to {to_date}")
+        logger.debug(f"[MT5_TRACKER] Searching history for position_id {position_id} from {from_date} to {to_date}")
 
         deals = mt5.history_deals_get(from_date, to_date)
         if not deals:
@@ -143,10 +143,10 @@ def get_closed_position_from_history(position_id: int, days_back: int = 30) -> O
             if deal_position_id == position_id:
                 if deal.entry == mt5.DEAL_ENTRY_OUT:
                     exit_deal = deal
-                    logger.info(f"[MT5_TRACKER] Found EXIT deal for position {position_id} - Deal ticket: {deal.ticket}, Price: {deal.price}, Profit: {deal.profit}")
+                    logger.debug(f"[MT5_TRACKER] Found EXIT deal for position {position_id} - Deal ticket: {deal.ticket}, Price: {deal.price}, Profit: {deal.profit}")
                 elif deal.entry == mt5.DEAL_ENTRY_IN:
                     entry_deal = deal
-                    logger.info(f"[MT5_TRACKER] Found ENTRY deal for position {position_id} - Deal ticket: {deal.ticket}, Price: {deal.price}")
+                    logger.debug(f"[MT5_TRACKER] Found ENTRY deal for position {position_id} - Deal ticket: {deal.ticket}, Price: {deal.price}")
 
         if exit_deal:
             return {
@@ -183,7 +183,7 @@ def get_position_lifecycle_info(position_id: int) -> Dict[str, Any]:
     Returns:
         Dict with 'state' and 'data' keys
     """
-    logger.info(f"[MT5_TRACKER] Getting lifecycle info for position_id: {position_id}")
+    logger.debug(f"[MT5_TRACKER] Getting lifecycle info for position_id: {position_id}")
 
     # First check if position is still open
     open_data = verify_position_exists(position_id)
@@ -225,7 +225,7 @@ def validate_database_position_ids(db_manager) -> Dict[str, Any]:
     Returns:
         Dict with validation results and recommendations
     """
-    logger.info("[MT5_TRACKER] Starting database position_id validation...")
+    logger.debug("[MT5_TRACKER] Starting database position_id validation...")
 
     try:
         position_repo = db_manager.get_position_repository()
@@ -255,7 +255,7 @@ def validate_database_position_ids(db_manager) -> Dict[str, Any]:
                     'issue': 'Position ID not found in MT5 - may be deal/order ticket instead of position_id'
                 })
 
-        logger.info(f"[MT5_TRACKER] Validation complete: {results['valid_ids']} valid, {results['not_found']} not found")
+        logger.debug(f"[MT5_TRACKER] Validation complete: {results['valid_ids']} valid, {results['not_found']} not found")
 
         if results['not_found'] > 0:
             logger.warning(f"[MT5_TRACKER] Found {results['not_found']} positions with invalid IDs - these may be deal tickets instead of position IDs")
