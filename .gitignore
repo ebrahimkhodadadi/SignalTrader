@@ -27,3 +27,5 @@ config/*.json
 # Keep Persian documentation
 !README-fa.md
 !docs/Configuration-fa.md
+.c*
+nul

@@ -29,8 +29,8 @@ class SignalRepository:
         """Get signal associated with a position ID"""
         query = """
             SELECT s.*
-            FROM signals s
-            INNER JOIN positions p ON p.signal_id = s.id
+            FROM Signals s
+            INNER JOIN Positions p ON p.signal_id = s.id
             WHERE p.position_id = ?
             LIMIT 1
         """
@@ -43,7 +43,7 @@ class SignalRepository:
         """Get signal by chat and message ID"""
         query = """
             SELECT *
-            FROM signals
+            FROM Signals
             WHERE telegram_message_chatid = ? AND telegram_message_id = ?
             ORDER BY id DESC
             LIMIT 1
@@ -73,7 +73,7 @@ class SignalRepository:
         """Get the last matching signal record"""
         query = """
             SELECT *
-            FROM signals
+            FROM Signals
             WHERE open_price = ? AND second_price = ? AND stop_loss = ? AND symbol = ?
             ORDER BY id DESC
             LIMIT 1
@@ -114,8 +114,8 @@ class SignalRepository:
                 s.tp_list,
                 s.symbol,
                 s.current_time as created_at
-            FROM signals s
-            INNER JOIN positions p ON p.signal_id = s.id
+            FROM Signals s
+            INNER JOIN Positions p ON p.signal_id = s.id
             ORDER BY s.id DESC
         """
         results = self.repository.execute_query(query)
@@ -156,7 +156,7 @@ class SignalRepository:
                 s.tp_list,
                 s.symbol,
                 s.current_time as created_at
-            FROM signals s
+            FROM Signals s
             ORDER BY s.id DESC
             LIMIT ? OFFSET ?
         """

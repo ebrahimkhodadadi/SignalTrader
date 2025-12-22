@@ -65,6 +65,86 @@ class HandlerManager:
             elif callback_data == "trade":
                 await self.views.show_trade_summary(query, user_id)
                 return
+            elif callback_data == "history":
+                await self.views.show_history_menu(query, user_id)
+                return
+            elif callback_data == "history_today":
+                await self.views.show_history_results(query, user_id, "today")
+                return
+            elif callback_data == "history_yesterday":
+                await self.views.show_history_results(query, user_id, "yesterday")
+                return
+            elif callback_data == "history_calendar":
+                await self.views.show_history_calendar(query, user_id)
+                return
+            elif callback_data == "history_calendar_reset":
+                # Reset calendar selection
+                if user_id in self.user_states and "context" in self.user_states[user_id]:
+                    self.user_states[user_id]["context"].pop("from_date", None)
+                    self.user_states[user_id]["context"].pop("to_date", None)
+                await self.views.show_history_calendar(query, user_id)
+                return
+            elif callback_data == "history_custom_view":
+                # View custom date range
+                if user_id in self.user_states and "context" in self.user_states[user_id]:
+                    from_date = self.user_states[user_id]["context"].get("from_date")
+                    to_date = self.user_states[user_id]["context"].get("to_date")
+                    if from_date and to_date:
+                        await self.views.show_history_results(query, user_id, "custom", from_date, to_date)
+                    else:
+                        await query.answer("Please select both start and end dates", show_alert=True)
+                return
+            elif callback_data == "history_back":
+                # Go back to history results using stored context
+                if user_id in self.user_states and "context" in self.user_states[user_id]:
+                    context = self.user_states[user_id]["context"]
+                    range_type = context.get("history_range_type", "today")
+                    from_date = context.get("from_date")
+                    to_date = context.get("to_date")
+
+                    if range_type == "custom" and from_date and to_date:
+                        await self.views.show_history_results(query, user_id, "custom", from_date, to_date)
+                    else:
+                        await self.views.show_history_results(query, user_id, range_type)
+                else:
+                    await self.views.show_history_menu(query, user_id)
+                return
+            elif callback_data == "cal_noop":
+                # No operation for calendar headers
+                await query.answer()
+                return
+            elif callback_data == "history_page_next":
+                # Go to next page
+                if user_id in self.user_states and "context" in self.user_states[user_id]:
+                    context = self.user_states[user_id]["context"]
+                    current_page = context.get("history_page", 0)
+                    context["history_page"] = current_page + 1
+
+                    range_type = context.get("history_range_type", "today")
+                    from_date = context.get("from_date")
+                    to_date = context.get("to_date")
+
+                    if range_type == "custom" and from_date and to_date:
+                        await self.views.show_history_results(query, user_id, "custom", from_date, to_date)
+                    else:
+                        await self.views.show_history_results(query, user_id, range_type)
+                return
+            elif callback_data == "history_page_prev":
+                # Go to previous page
+                if user_id in self.user_states and "context" in self.user_states[user_id]:
+                    context = self.user_states[user_id]["context"]
+                    current_page = context.get("history_page", 0)
+                    context["history_page"] = max(0, current_page - 1)
+
+                    range_type = context.get("history_range_type", "today")
+                    from_date = context.get("from_date")
+                    to_date = context.get("to_date")
+
+                    if range_type == "custom" and from_date and to_date:
+                        await self.views.show_history_results(query, user_id, "custom", from_date, to_date)
+                    else:
+                        await self.views.show_history_results(query, user_id, range_type)
+                return
 
             # Now handle compound callbacks that need splitting
             parts = callback_data.split("_")
@@ -110,6 +190,85 @@ class HandlerManager:
                 signal_id = int(parts[1])
                 entry_type = "_".join(parts[2:])  # "open" or "second"
                 await self.views.show_manage_signal_entries(query, user_id, signal_id, entry_type)
+            elif action == "history" and len(parts) >= 2 and parts[1] == "detail":
+                # history_detail_{index}
+                result_index = int(parts[2])
+                logger.info(f"[HISTORY_HANDLER] User {user_id} viewing history detail for result_index: {result_index}")
+                await self.views.show_history_detail(query, user_id, result_index)
+            elif action == "cal":
+                # Calendar navigation and day selection
+                # Formats: cal_prev_{year}_{month}_{mode}, cal_next_{year}_{month}_{mode}, cal_day_{year}_{month}_{day}_{mode}
+                if len(parts) < 2:
+                    await query.answer("Invalid calendar action", show_alert=True)
+                    return
+
+                cal_action = parts[1]
+
+                if cal_action == "prev":
+                    # Navigate to previous month
+                    year = int(parts[2])
+                    month = int(parts[3])
+                    mode = parts[4] if len(parts) > 4 else "from"
+
+                    # Calculate previous month
+                    if month == 1:
+                        year -= 1
+                        month = 12
+                    else:
+                        month -= 1
+
+                    await self.views.show_history_calendar(query, user_id, year, month, mode)
+
+                elif cal_action == "next":
+                    # Navigate to next month
+                    year = int(parts[2])
+                    month = int(parts[3])
+                    mode = parts[4] if len(parts) > 4 else "from"
+
+                    # Calculate next month
+                    if month == 12:
+                        year += 1
+                        month = 1
+                    else:
+                        month += 1
+
+                    await self.views.show_history_calendar(query, user_id, year, month, mode)
+
+                elif cal_action == "day":
+                    # Select a day
+                    from datetime import datetime
+
+                    year = int(parts[2])
+                    month = int(parts[3])
+                    day = int(parts[4])
+                    mode = parts[5] if len(parts) > 5 else "from"
+
+                    selected_date = datetime(year, month, day)
+
+                    # Store in user context
+                    if user_id not in self.user_states:
+                        self.user_states[user_id] = {}
+                    if "context" not in self.user_states[user_id]:
+                        self.user_states[user_id]["context"] = {}
+
+                    if mode == "from":
+                        self.user_states[user_id]["context"]["from_date"] = selected_date
+                        # Switch to selecting 'to' date
+                        await self.views.show_history_calendar(query, user_id, year, month, "to")
+                    else:  # mode == "to"
+                        from_date = self.user_states[user_id]["context"].get("from_date")
+
+                        # Validate: to_date must be >= from_date
+                        if from_date and selected_date < from_date:
+                            await query.answer("End date must be after start date", show_alert=True)
+                            await self.views.show_history_calendar(query, user_id, year, month, "to")
+                        else:
+                            self.user_states[user_id]["context"]["to_date"] = selected_date
+                            # Show calendar with both dates selected
+                            await self.views.show_history_calendar(query, user_id, year, month, "to")
+
+                else:
+                    await query.answer("Invalid calendar action", show_alert=True)
             else:
                 logger.warning(f"Unknown action: {action} from callback: {callback_data}")
                 await query.answer("Unknown action", show_alert=True)
@@ -153,6 +312,7 @@ class HandlerManager:
                     ],
                     [
                         InlineKeyboardButton("💼 Trade Summary", callback_data="trade"),
+                        InlineKeyboardButton("📜 History", callback_data="history"),
                     ],
                 ]
                 await update.message.reply_text(
