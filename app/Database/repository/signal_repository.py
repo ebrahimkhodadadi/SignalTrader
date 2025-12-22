@@ -1,6 +1,7 @@
 """Signal repository for database operations on trading signals"""
 
 from typing import List, Dict, Optional, Any
+from loguru import logger
 from .Repository import SQLiteRepository
 from ..models import SignalModel
 
@@ -181,6 +182,71 @@ class SignalRepository:
                 "created_at": result[11]
             })
         return signals
+
+    def get_distinct_channels(self) -> List[Dict[str, str]]:
+        """Get list of distinct channels with signals"""
+        query = """
+            SELECT DISTINCT
+                telegram_channel_title,
+                provider,
+                telegram_message_chatid
+            FROM Signals
+            WHERE telegram_channel_title IS NOT NULL
+            ORDER BY telegram_channel_title
+        """
+        results = self.repository.execute_query(query)
+        if not results:
+            return []
+
+        channels = []
+        for result in results:
+            channels.append({
+                "channel_name": result[0],
+                "provider": result[1] if result[1] else "telegram",
+                "chat_id": result[2]
+            })
+        return channels
+
+    def get_position_ids_by_channel(
+        self,
+        channel_name: str
+    ) -> List[int]:
+        """
+        Get all position IDs linked to a specific channel
+
+        Args:
+            channel_name: Name of the Telegram channel
+
+        Returns:
+            List of position IDs
+        """
+        # Debug query: show signal_id and channel for each position
+        debug_query = """
+            SELECT p.position_id, s.id as signal_id, s.telegram_channel_title
+            FROM Positions p
+            INNER JOIN Signals s ON p.signal_id = s.id
+            WHERE s.telegram_channel_title = ?
+            ORDER BY p.position_id DESC
+        """
+        debug_results = self.repository.execute_query(debug_query, (channel_name,))
+
+        logger.info(f"[DB] Query for channel '{channel_name}' returned {len(debug_results) if debug_results else 0} results:")
+        if debug_results:
+            for row in debug_results:
+                logger.info(f"  Position ID: {row[0]}, Signal ID: {row[1]}, Channel: {row[2]}")
+
+        query = """
+            SELECT DISTINCT p.position_id
+            FROM Positions p
+            INNER JOIN Signals s ON p.signal_id = s.id
+            WHERE s.telegram_channel_title = ?
+            ORDER BY p.position_id DESC
+        """
+        results = self.repository.execute_query(query, (channel_name,))
+        if not results:
+            return []
+
+        return [result[0] for result in results if result[0]]
 
 
 # Global instance for backward compatibility

@@ -145,6 +145,21 @@ class HandlerManager:
                     else:
                         await self.views.show_history_results(query, user_id, range_type)
                 return
+            elif callback_data == "analyze":
+                await self.views.show_analyze_menu(query, user_id)
+                return
+            elif callback_data == "analyze_all":
+                await self.views.show_channel_list(query, user_id, "all")
+                return
+            elif callback_data == "analyze_week":
+                await self.views.show_channel_list(query, user_id, "week")
+                return
+            elif callback_data == "analyze_month":
+                await self.views.show_channel_list(query, user_id, "month")
+                return
+            elif callback_data == "analyze_30days":
+                await self.views.show_channel_list(query, user_id, "30days")
+                return
 
             # Now handle compound callbacks that need splitting
             parts = callback_data.split("_")
@@ -269,6 +284,14 @@ class HandlerManager:
 
                 else:
                     await query.answer("Invalid calendar action", show_alert=True)
+            elif action == "analyze" and len(parts) >= 3 and parts[1] == "detail":
+                # Handle analyze_detail_{channel_idx}
+                try:
+                    channel_idx = int(parts[2])
+                    await self.views.show_channel_detail(query, user_id, channel_idx)
+                except (ValueError, IndexError) as e:
+                    logger.error(f"Error parsing analyze_detail callback: {e}")
+                    await query.answer("Invalid channel selection", show_alert=True)
             else:
                 logger.warning(f"Unknown action: {action} from callback: {callback_data}")
                 await query.answer("Unknown action", show_alert=True)

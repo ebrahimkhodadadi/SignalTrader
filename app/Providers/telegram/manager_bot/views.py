@@ -12,6 +12,7 @@ import asyncio
 
 from Database.database_manager import db_manager
 from .helpers import find_signal_by_ticket, get_position_for_signal
+from report import ChannelAnalyzer
 
 
 class ViewManager:
@@ -1084,6 +1085,7 @@ _Updated: {datetime.now().strftime('%H:%M:%S')}_
                 ],
                 [
                     InlineKeyboardButton("📜 History", callback_data="history"),
+                    InlineKeyboardButton("📊 Analyze", callback_data="analyze"),
                 ],
             ]
 
@@ -1281,6 +1283,7 @@ _Updated: {datetime.now().strftime('%H:%M:%S')}_
                 ],
                 [
                     InlineKeyboardButton("📜 History", callback_data="history"),
+                    InlineKeyboardButton("📊 Analyze", callback_data="analyze"),
                 ],
             ]
 
@@ -1865,3 +1868,231 @@ No trades found for this period."""
                 await query.edit_message_text(f"❌ Error: {str(e)}", reply_markup=InlineKeyboardMarkup(buttons))
             except:
                 await query.answer(f"❌ Error: {str(e)}", show_alert=True)
+
+    async def show_analyze_menu(self, query, user_id: int) -> None:
+        """Show channel analysis main menu"""
+        try:
+            self._stop_auto_update(user_id)
+
+            text = """📊 <b>Channel Analysis</b>
+
+Analyze trading performance by signal provider channel.
+
+Select analysis period:"""
+
+            buttons = [
+                [
+                    InlineKeyboardButton("📅 All Time", callback_data="analyze_all"),
+                    InlineKeyboardButton("📆 This Week", callback_data="analyze_week"),
+                ],
+                [
+                    InlineKeyboardButton("📅 This Month", callback_data="analyze_month"),
+                    InlineKeyboardButton("📅 Last 30 Days", callback_data="analyze_30days"),
+                ],
+                [
+                    InlineKeyboardButton("⬅️ Back to Menu", callback_data="menu"),
+                ],
+            ]
+
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+
+        except Exception as e:
+            logger.error(f"Error showing analyze menu: {e}", exc_info=True)
+            await query.edit_message_text(f"❌ Error: {str(e)}")
+
+    async def show_channel_list(self, query, user_id: int, period: str = "all") -> None:
+        """Show list of channels with summary statistics"""
+        try:
+            self._stop_auto_update(user_id)
+
+            # Initialize analyzer
+            analyzer = ChannelAnalyzer(db_manager)
+
+            # Calculate date range based on period
+            start_date = None
+            end_date = None
+            period_label = "All Time"
+
+            if period == "week":
+                from datetime import timedelta
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=7)
+                period_label = "This Week"
+            elif period == "month":
+                from datetime import timedelta
+                end_date = datetime.now()
+                start_date = end_date.replace(day=1)
+                period_label = "This Month"
+            elif period == "30days":
+                from datetime import timedelta
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=30)
+                period_label = "Last 30 Days"
+
+            # Get channel summaries
+            channels = analyzer.get_all_channels_summary(start_date, end_date, min_positions=1)
+
+            if not channels:
+                text = f"📊 <b>Channel Analysis - {period_label}</b>\n\n❌ No channels found with trading activity."
+                buttons = [[InlineKeyboardButton("⬅️ Back", callback_data="analyze")]]
+                await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons))
+                return
+
+            # Store period in user context for detail view
+            if user_id not in self.user_states:
+                self.user_states[user_id] = {"state": "analyze", "context": {}}
+            self.user_states[user_id]["context"]["analyze_period"] = period
+            self.user_states[user_id]["context"]["channels"] = channels
+
+            # Build message with channel list
+            text = f"📊 <b>Channel Analysis - {period_label}</b>\n\n"
+            text += f"Found <b>{len(channels)}</b> channels:\n\n"
+
+            # Show top channels (up to 10)
+            for idx, stats in enumerate(channels[:10], 1):
+                profit_emoji = "📈" if stats.net_profit >= 0 else "📉"
+                win_rate_emoji = "🟢" if stats.win_rate >= 60 else "🟡" if stats.win_rate >= 40 else "🔴"
+
+                text += f"{idx}. <b>{stats.channel_name}</b>\n"
+                text += f"   {profit_emoji} P&L: <b>${stats.net_profit:.2f}</b>\n"
+                text += f"   {win_rate_emoji} Win Rate: {stats.win_rate:.1f}%\n"
+                text += f"   📊 Positions: {stats.closed_positions}\n\n"
+
+            if len(channels) > 10:
+                text += f"<i>...and {len(channels) - 10} more channels</i>\n\n"
+
+            text += "\nSelect a channel for detailed analysis:"
+
+            # Create buttons for channels (2 per row, up to 10 channels)
+            buttons = []
+            for idx in range(0, min(len(channels), 10), 2):
+                row = []
+                for i in range(2):
+                    if idx + i < min(len(channels), 10):
+                        channel_idx = idx + i
+                        # Use short name for button (first 15 chars)
+                        short_name = channels[channel_idx].channel_name[:15]
+                        if len(channels[channel_idx].channel_name) > 15:
+                            short_name += "..."
+                        row.append(InlineKeyboardButton(
+                            f"{channel_idx + 1}. {short_name}",
+                            callback_data=f"analyze_detail_{channel_idx}"
+                        ))
+                buttons.append(row)
+
+            # Navigation buttons
+            buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="analyze")])
+
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+
+        except Exception as e:
+            logger.error(f"Error showing channel list: {e}", exc_info=True)
+            await query.edit_message_text(f"❌ Error: {str(e)}")
+
+    async def show_channel_detail(self, query, user_id: int, channel_idx: int) -> None:
+        """Show detailed analysis for a specific channel"""
+        try:
+            self._stop_auto_update(user_id)
+
+            # Get channel from user context
+            if user_id not in self.user_states or "context" not in self.user_states[user_id]:
+                await query.answer("Session expired. Please start again.", show_alert=True)
+                return
+
+            context = self.user_states[user_id]["context"]
+            channels = context.get("channels", [])
+            period = context.get("analyze_period", "all")
+
+            if channel_idx >= len(channels):
+                await query.answer("Channel not found.", show_alert=True)
+                return
+
+            stats = channels[channel_idx]
+
+            # Build detailed message
+            profit_emoji = "📈" if stats.net_profit >= 0 else "📉"
+            win_rate_emoji = "🟢" if stats.win_rate >= 60 else "🟡" if stats.win_rate >= 40 else "🔴"
+
+            period_labels = {
+                "all": "All Time",
+                "week": "This Week",
+                "month": "This Month",
+                "30days": "Last 30 Days"
+            }
+            period_label = period_labels.get(period, "All Time")
+
+            text = f"📊 <b>Channel Analysis - {period_label}</b>\n\n"
+            text += f"<b>{stats.channel_name}</b>\n"
+            text += f"Provider: {stats.provider}\n\n"
+
+            text += f"📈 <b>Performance Overview</b>\n"
+            text += f"{profit_emoji} Net P&L: <b>${stats.net_profit:.2f}</b>\n"
+            text += f"💰 Total Profit: ${stats.total_profit:.2f}\n"
+            text += f"💸 Total Loss: ${stats.total_loss:.2f}\n"
+            if stats.profit_factor > 0:
+                text += f"📊 Profit Factor: {stats.profit_factor:.2f}\n"
+            if stats.average_roi != 0:
+                text += f"📊 Avg ROI: {stats.average_roi:.2f}%\n\n"
+            else:
+                text += "\n"
+
+            text += f"📊 <b>Position Statistics</b>\n"
+            text += f"Total Positions: {stats.total_positions}\n"
+            text += f"Open Positions: {stats.open_positions}\n"
+            text += f"Closed Positions: {stats.closed_positions}\n\n"
+
+            if stats.closed_positions > 0:
+                text += f"{win_rate_emoji} Win Rate: <b>{stats.win_rate:.1f}%</b>\n"
+                text += f"✅ Winning Trades: {stats.winning_positions}\n"
+                text += f"❌ Losing Trades: {stats.losing_positions}\n\n"
+
+            if stats.largest_win > 0 or stats.largest_loss < 0:
+                text += f"💎 <b>Best/Worst Trades</b>\n"
+                if stats.largest_win > 0:
+                    text += f"📈 Largest Win: ${stats.largest_win:.2f}\n"
+                if stats.largest_loss < 0:
+                    text += f"📉 Largest Loss: ${stats.largest_loss:.2f}\n"
+                if stats.average_win > 0:
+                    text += f"📊 Avg Win: ${stats.average_win:.2f}\n"
+                if stats.average_loss > 0:
+                    text += f"📊 Avg Loss: ${stats.average_loss:.2f}\n"
+                text += "\n"
+
+            if stats.max_drawdown > 0:
+                text += f"⚠️ <b>Risk Metrics</b>\n"
+                text += f"Max Drawdown: ${stats.max_drawdown:.2f}\n"
+                if stats.current_drawdown > 0:
+                    text += f"Current Drawdown: ${stats.current_drawdown:.2f}\n"
+                text += "\n"
+
+            if stats.total_volume > 0:
+                text += f"📊 Total Volume: {stats.total_volume:.2f} lots\n\n"
+
+            if stats.first_trade_date and stats.last_trade_date:
+                text += f"📅 <b>Activity Period</b>\n"
+                text += f"First Trade: {stats.first_trade_date.strftime('%Y-%m-%d')}\n"
+                text += f"Last Trade: {stats.last_trade_date.strftime('%Y-%m-%d')}\n"
+
+            # Buttons
+            buttons = [
+                [InlineKeyboardButton("⬅️ Back to List", callback_data=f"analyze_{period}")],
+                [InlineKeyboardButton("🏠 Main Menu", callback_data="menu")],
+            ]
+
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+
+        except Exception as e:
+            logger.error(f"Error showing channel detail: {e}", exc_info=True)
+            await query.edit_message_text(f"❌ Error: {str(e)}")
