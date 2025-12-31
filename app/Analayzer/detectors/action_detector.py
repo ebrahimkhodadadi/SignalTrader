@@ -20,7 +20,7 @@ class ActionDetector:
 
     # Keywords for sell actions
     SELL_KEYWORDS = [
-        'sell', 'selll', 'بفروش', 'فروش', 'selling', "𝐒𝐞𝐥𝐥"
+        'sell', 'selll', 'بفروش', 'فروش', 'selling', "𝐒𝐞𝐥𝐥", 'سل'
     ]
 
     @staticmethod

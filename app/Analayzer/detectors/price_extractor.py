@@ -182,61 +182,60 @@ class PriceExtractor:
             return None
 
     @staticmethod
-    def extract_stop_loss(message):
-        """Extract stop loss level from message"""
-        try:
-            if not message:
-                return None
-
-            message = message.lower()
-            sl_numbers = []
-            sentences = re.split(r'\n+', message)
-
-            for sentence in sentences:
-                # Multiple SL patterns
-                sl_patterns = [
-                    r'sl\s*:\s*(\d+\.\d+)',
-                    r'sl\s*:\s*(\d+\.?\d*)',
-                    r'(?i)stop\s*(\d+\.?\d*)',
-                    r'حد\s*(\d+\.\d+|\d+)',  # Persian
-                    r'STOP LOSS\s*:\s*(\d+\.?\d*)',
-                    r'sl\s*[-:]\s*(\d+\.\d+|\d+)',
-                    r'sl\s*[:\-]\s*(\d+\.?\d*)',
-                    r'stop\s*loss\s*[:\-]\s*(\d+\.?\d*)',
-                    r'sl\s*(\d+\.?\d*)',
-                    r'stop\s*loss\s*[@:]\s*(\d+\.?\d*)',
-                    r'Stoploss\s*=\s*(\d+\.\d+|\d+)',
-                    r'SL\s*@\s*(\d+\.\d+|\d+)',
-                    r'(?i)stop\s*loss\s*(\d+)',
-                    r'استاپ\s*(\d+\.?\d*)',  # Persian
-                    r'sl[\s.:]*([\d]+\.?\d*)',
-                    r'stop\s*loss\s*(?:point)?\s*[:\-]?\s*(\d+\.\d+|\d+)',
-                    r'sl\s*:::*(\d+\.?\d*)',  # SL:::4090 format
-                ]
-
-                for pattern in sl_patterns:
-                    match = re.search(pattern, sentence, re.IGNORECASE)
-                    if match:
-                        sl_numbers.append(float(match.group(1)))
-                        break  # Found one, move to next sentence
-
-                # Special case: number followed by 'sl'
-                if not sl_numbers:
-                    words = re.findall(r'\b\d+\b', sentence.lower())
-                    if 'sl' in sentence.lower():
-                        for word in words:
-                            if sentence.lower().find(word) < sentence.lower().find('sl'):
-                                try:
-                                    sl_numbers.append(float(word))
-                                    break
-                                except ValueError:
-                                    continue
-
-            return sl_numbers[0] if sl_numbers else None
-
-        except Exception:
+    def extract_stop_loss(message: str):
+        """
+        Extract Stop Loss (SL) value from Persian / English trading messages.
+        Returns float or None
+        """
+        if not message:
             return None
 
+        message = message.lower()
+
+        # Unified SL keywords (Persian + English)
+        sl_keywords = [
+            r'sl',
+            r'stop\s*loss',
+            r'stoploss',
+            r'stop',
+            r'استاپ',
+            r'حد\s*ضرر',
+            r'ضرر',
+            r'حد'
+        ]
+
+        # Build one strong regex
+        sl_pattern = rf'''
+            (?:{"|".join(sl_keywords)})      # SL keywords
+            \s*                              # optional space
+            [:@=\-]*                         # optional separators
+            \s*
+            (\d+(?:\.\d+)?)                  # price number
+        '''
+
+        matches = re.findall(sl_pattern, message, re.IGNORECASE | re.VERBOSE)
+
+        if matches:
+            try:
+                return float(matches[0])
+            except ValueError:
+                return None
+
+        # Fallback: number before 'sl'
+        fallback = re.search(
+            r'(\d+(?:\.\d+)?)\s*(?:sl|stop)',
+            message,
+            re.IGNORECASE
+        )
+
+        if fallback:
+            try:
+                return float(fallback.group(1))
+            except ValueError:
+                return None
+
+        return None
+    
     @staticmethod
     def extract_simple_price(message):
         """Extract a simple price with @ symbol"""
