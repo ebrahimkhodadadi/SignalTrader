@@ -76,7 +76,7 @@ class TelegramClientManager:
         # Configure stdout for proper encoding
         sys.stdout.reconfigure(encoding='utf-8')
 
-        logger.info("Starting Telegram message monitoring...")
+        logger.debug("Starting Telegram message monitoring...")
 
         while True:
             try:
@@ -88,12 +88,12 @@ class TelegramClientManager:
                 self._register_event_handlers()
 
                 # Run until disconnected
-                logger.info("Monitoring active. Press Ctrl+C to stop.")
+                logger.debug("Monitoring active. Press Ctrl+C to stop.")
                 await self.client.run_until_disconnected()
 
             except (AuthKeyError, OSError) as e:
                 logger.critical(f"Authentication or network error: {e}")
-                logger.info(
+                logger.debug(
                     "Please check your API credentials and network connection")
                 await asyncio.sleep(30)  # Longer delay for auth errors
 
@@ -105,23 +105,23 @@ class TelegramClientManager:
 
             except (NetworkMigrateError, ServerError, RPCError) as e:
                 logger.error(f"Telegram server error: {e}")
-                logger.info("Retrying connection in 10 seconds...")
+                logger.debug("Retrying connection in 10 seconds...")
                 await asyncio.sleep(10)
 
             except Exception as e:
                 logger.error(f"Unexpected error in message monitoring: {e}")
-                logger.info("Retrying connection in 5 seconds...")
+                logger.debug("Retrying connection in 5 seconds...")
                 await asyncio.sleep(5)
 
             except KeyboardInterrupt:
-                logger.info("Received shutdown signal")
+                logger.debug("Received shutdown signal")
                 break
 
             finally:
                 # Ensure client is properly disconnected
                 if self.client and self.client.is_connected():
                     await self.client.disconnect()
-                    logger.info("Telegram client disconnected")
+                    logger.debug("Telegram client disconnected")
 
     def _register_event_handlers(self) -> None:
         """Register all Telegram event handlers."""

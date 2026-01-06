@@ -77,7 +77,7 @@ class TelegramManagerBot(Provider):
     async def start_monitoring(self) -> None:
         """Start provider monitoring (implements Provider interface) without closing the global event loop"""
         try:
-            logger.info("Initializing Telegram Manager Bot...")
+            logger.debug("Initializing Telegram Manager Bot...")
 
             # Initialize MetaTrader connection
             mt_config = self.settings.MetaTrader
@@ -112,11 +112,11 @@ class TelegramManagerBot(Provider):
                 filters.TEXT & ~filters.COMMAND, self.handlers.handle_message))
 
             # Initialize and start application without closing the event loop
-            logger.info("Starting Telegram Manager Bot (non-blocking polling)...")
+            logger.debug("Starting Telegram Manager Bot (non-blocking polling)...")
             await self.app.initialize()
             await self.app.start()
             await self.app.updater.start_polling()
-            logger.info("Telegram Manager Bot polling started")
+            logger.debug("Telegram Manager Bot polling started")
 
         except Exception as e:
             logger.error(f"Error in start_monitoring: {e}")
@@ -128,6 +128,6 @@ class TelegramManagerBot(Provider):
                 await self.app.updater.stop()
                 await self.app.stop()
                 await self.app.shutdown()
-                logger.info("Telegram Manager Bot stopped")
+                logger.debug("Telegram Manager Bot stopped")
         except Exception as e:
             logger.error(f"Error stopping bot: {e}")

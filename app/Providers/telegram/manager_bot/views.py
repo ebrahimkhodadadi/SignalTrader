@@ -1549,7 +1549,7 @@ History includes both closed and active positions with comprehensive metrics."""
 
             # Combine results
             all_results = historical_positions + filtered_open
-            logger.info(f"[HISTORY] User {user_id}: {len(all_results)} total positions")
+            logger.debug(f"[HISTORY] User {user_id}: {len(all_results)} total positions")
 
             if not all_results:
                 text = f"""📜 **Trading History**

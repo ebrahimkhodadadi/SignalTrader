@@ -230,10 +230,10 @@ class SignalRepository:
         """
         debug_results = self.repository.execute_query(debug_query, (channel_name,))
 
-        logger.info(f"[DB] Query for channel '{channel_name}' returned {len(debug_results) if debug_results else 0} results:")
+        logger.debug(f"[DB] Query for channel '{channel_name}' returned {len(debug_results) if debug_results else 0} results:")
         if debug_results:
             for row in debug_results:
-                logger.info(f"  Position ID: {row[0]}, Signal ID: {row[1]}, Channel: {row[2]}")
+                logger.debug(f"  Position ID: {row[0]}, Signal ID: {row[1]}, Channel: {row[2]}")
 
         query = """
             SELECT DISTINCT p.position_id
